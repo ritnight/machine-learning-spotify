@@ -1,0 +1,12 @@
+variable,Q1,Q3,limite_inf,limite_sup,n_outliers,pct_outliers,decision
+instrumentalidad,0.0,0.0477,-0.07155,0.11925,25186,22.12,Conservar
+presencia_habla,0.0359,0.0846,-0.03714999999999999,0.15764999999999998,13211,11.6,Conservar
+presencia_en_vivo,0.098,0.273,-0.1645,0.5355000000000001,8579,7.54,Conservar
+volumen_db,-10.002,-5.0,-17.505000000000003,2.503000000000001,6099,5.36,Conservar
+duracion_ms,174198.5,261583.0,43121.75,392659.75,5607,4.93,Conservar
+tempo_bpm,99.4295,140.07775,38.457125,201.050125,470,0.41,Conservar
+bailabilidad,0.456,0.695,0.09750000000000009,1.0534999999999999,463,0.41,Conservar
+energia,0.473,0.854,-0.09850000000000003,1.4255,0,0.0,Conservar
+acusticidad,0.0169,0.597,-0.85325,1.46715,0,0.0,Conservar
+positividad,0.261,0.683,-0.372,1.316,0,0.0,Conservar
+popularidad,17.0,50.0,-32.5,99.5,2,0.0,Conservar

@@ -1,0 +1,7 @@
+indicador,cantidad
+filas_originales,114000
+filas_eliminadas_sin_duplicar,158
+filas_conservadas,113842
+albumes_imputados_en_filas_conservadas,20
+compases_imputados,6
+moda_compas_entrenamiento,4
