@@ -6,7 +6,7 @@ El proyecto analiza un conjunto de datos de canciones de Spotify con el objetivo
 
 ---
 
-## 👥 Integrantes
+## Integrantes
 
 - Alejandra González
 - Constanza González
@@ -20,7 +20,7 @@ El proyecto analiza un conjunto de datos de canciones de Spotify con el objetivo
 
 ---
 
-# 📌 Descripción del proyecto
+# Descripción del proyecto
 
 Spotify dispone de grandes cantidades de información asociada a canciones, artistas, géneros y características de audio.
 
@@ -60,7 +60,7 @@ El futuro modelo podría servir como apoyo para:
 
 ---
 
-# 🎯 Objetivos del proyecto
+# Objetivos del proyecto
 
 ## Objetivo general
 
@@ -79,7 +79,7 @@ Construir una base analítica reproducible para desarrollar, en una etapa futura
 
 ---
 
-# 📊 KPIs del proyecto
+# KPIs del proyecto
 
 Se definieron indicadores de calidad para esta primera etapa y métricas de desempeño para una futura etapa de modelamiento.
 
@@ -95,24 +95,24 @@ Se definieron indicadores de calidad para esta primera etapa y métricas de dese
 
 ---
 
-# 🔄 Metodología CRISP-DM
+# Metodología CRISP-DM
 
 El proyecto sigue la metodología **CRISP-DM**, compuesta por seis fases.
 
 | Fase | Estado |
 |---|---|
-| 1. Comprensión del negocio | ✅ Completa |
-| 2. Comprensión de los datos | ✅ Completa |
-| 3. Preparación de los datos | ✅ Completa |
-| 4. Modelado | 🔄 EP2 |
-| 5. Evaluación | 🔄 EP2 |
-| 6. Despliegue | 🔄 Trabajo futuro |
+| 1. Comprensión del negocio | Completa |
+| 2. Comprensión de los datos | Completa |
+| 3. Preparación de los datos | Completa |
+| 4. Modelado | EP2 |
+| 5. Evaluación | EP2 |
+| 6. Despliegue | Trabajo futuro |
 
 En esta Evaluación Parcial N.º 1 se desarrollan principalmente las tres primeras fases de CRISP-DM.
 
 ---
 
-# 📁 Fuente de datos
+# Fuente de datos
 
 El dataset utilizado corresponde a:
 
@@ -142,7 +142,7 @@ La popularidad es una variable que puede cambiar con el tiempo según el comport
 
 ---
 
-# 🛠️ Herramientas utilizadas
+# Herramientas utilizadas
 
 Durante el desarrollo del proyecto se utilizaron las siguientes herramientas:
 
@@ -161,7 +161,7 @@ Durante el desarrollo del proyecto se utilizaron las siguientes herramientas:
 
 ---
 
-# 🧾 Variables principales
+# Variables principales
 
 | Variable | Descripción | Tipo |
 |---|---|---|
@@ -187,7 +187,7 @@ Durante el desarrollo del proyecto se utilizaron las siguientes herramientas:
 
 ---
 
-# 📏 Cómo se miden los datos
+# Cómo se miden los datos
 
 Las variables del proyecto utilizan diferentes escalas de medición.
 
@@ -220,7 +220,7 @@ Para estudiar cómo estas variables se relacionan con la variable objetivo se ut
 
 ---
 
-# 🔍 Auditoría inicial de calidad
+# Auditoría inicial de calidad
 
 Antes de realizar la limpieza se analizaron separadamente:
 
@@ -249,7 +249,7 @@ Un valor igual a cero no fue tratado automáticamente como un dato faltante. Pri
 
 ---
 
-# 📊 Distribución preliminar de los datos
+# Distribución preliminar de los datos
 
 Antes de aplicar las reglas de preparación se estudiaron las distribuciones de las principales variables numéricas.
 
@@ -265,7 +265,7 @@ Este análisis permitió identificar:
 
 ---
 
-# 🧹 Limpieza y preparación de datos
+# Limpieza y preparación de datos
 
 Las principales reglas aplicadas fueron:
 
@@ -298,7 +298,7 @@ Esta decisión puede modificar la representación de algunos géneros musicales 
 
 ---
 
-# 🚫 Prevención de Data Leakage
+# Prevención de Data Leakage
 
 En el dataset existen:
 
@@ -340,7 +340,7 @@ Además:
 
 ---
 
-# 📈 Análisis exploratorio de datos
+# Análisis exploratorio de datos
 
 ## Distribución de variables numéricas
 
@@ -359,7 +359,7 @@ Se evaluaron:
 
 ---
 
-# 🎼 Variables categóricas
+# Variables categóricas
 
 También se analizaron las distribuciones de variables categóricas como:
 
@@ -372,7 +372,7 @@ También se analizaron las distribuciones de variables categóricas como:
 
 ---
 
-# 🔗 Relación entre variables y popularidad
+# Relación entre variables y popularidad
 
 Uno de los principales objetivos del EDA fue estudiar cómo se relacionan las variables predictoras con la variable objetivo:
 
@@ -413,7 +413,7 @@ Sin embargo, esto no descarta:
 
 ---
 
-# 🔗 Correlaciones entre variables predictoras
+# Correlaciones entre variables predictoras
 
 Aunque las correlaciones con popularidad son débiles, existen relaciones importantes entre algunas variables predictoras.
 
@@ -433,7 +433,7 @@ Estas relaciones corresponden a asociaciones entre variables predictoras y no de
 
 ---
 
-# 🎧 Popularidad según género musical
+# Popularidad según género musical
 
 Para estudiar variables categóricas se comparó la popularidad entre diferentes grupos.
 
@@ -461,7 +461,7 @@ Mientras que otros presentan una popularidad media considerablemente menor.
 
 ---
 
-# 🔞 Popularidad según contenido explícito
+# Popularidad según contenido explícito
 
 También se analizó la distribución de la popularidad según si la canción presenta contenido explícito.
 
@@ -476,7 +476,7 @@ Sin embargo, estas diferencias no demuestran que el contenido explícito sea la 
 
 ---
 
-# 📌 Outliers
+# Outliers
 
 Durante el análisis se utilizó el criterio del rango intercuartílico **IQR** para detectar posibles valores atípicos.
 
@@ -494,7 +494,7 @@ Por lo tanto, los outliers fueron analizados antes de decidir cualquier tratamie
 
 ---
 
-# ⚖️ Sesgos detectados
+# Sesgos detectados
 
 Durante el proceso de limpieza se identificó un efecto importante.
 
@@ -516,7 +516,7 @@ Esto representa un posible sesgo porque reduce su representación dentro del con
 
 ---
 
-# ⚠️ Otros riesgos éticos
+# Otros riesgos éticos
 
 También se identificaron otros riesgos asociados al futuro uso de un modelo predictivo.
 
@@ -551,7 +551,7 @@ Por esta razón se recomienda mantener supervisión humana en futuras aplicacion
 
 ---
 
-# 🔐 Privacidad
+# Privacidad
 
 El dataset actual no contiene:
 
@@ -575,7 +575,7 @@ Si en una etapa futura se incorporaran datos de usuarios, sería necesario consi
 
 ---
 
-# ⚙️ Pipeline de preparación para Machine Learning
+# Pipeline de preparación para Machine Learning
 
 El proyecto deja preparado un pipeline de transformación mediante `ColumnTransformer`.
 
@@ -640,7 +640,7 @@ El pipeline se ajusta utilizando exclusivamente los datos de entrenamiento.
 
 ---
 
-# 📂 Estructura del proyecto
+# Estructura del proyecto
 
 ```text
 Machine-Learning-Spotify/
@@ -673,14 +673,14 @@ Machine-Learning-Spotify/
 │   └── 05_popularidad_explicit.png
 │
 ├── models/
-│   └── reservado para EP2
+│   └── reservado para evaluaciones futuras
 │
 └── README.md
 ```
 
 ---
 
-# ▶️ Ejecución del proyecto
+# Ejecución del proyecto
 
 ## 1. Clonar el repositorio
 
@@ -724,7 +724,7 @@ Restart Kernel and Run All
 
 ---
 
-# ✅ Principales resultados de EP1
+# Principales resultados de EP1
 
 - Se analizaron **114.000 registros**.
 - Se conservaron **113.842 filas**.
@@ -743,7 +743,7 @@ Restart Kernel and Run All
 
 ---
 
-# 🚀 Próximos pasos — EP2
+# Próximos pasos 
 
 En la siguiente etapa del proyecto se plantea:
 
@@ -763,7 +763,7 @@ En la siguiente etapa del proyecto se plantea:
 
 ---
 
-# 📌 Conclusiones
+# Conclusiones
 
 1. La auditoría inicial permitió detectar y separar correctamente diferentes tipos de incidencias.
 
@@ -787,7 +787,7 @@ En la siguiente etapa del proyecto se plantea:
 
 ---
 
-# 📚 Contexto académico
+# Contexto académico
 
 **Duoc UC — 2026**  
 **Asignatura:** Machine Learning — MLY1101  

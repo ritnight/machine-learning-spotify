@@ -258,7 +258,7 @@ En esta entrega el pipeline queda **construido y verificado, pero no se entrena 
 
 ---
 
-## 13. Trabajo futuro (EP2)
+## 13. Trabajo futuro
 
 - Entrenar y comparar modelos de regresión (ej. regresión lineal regularizada, árboles/ensambles) dentro del pipeline ya construido.
 - Evaluar MAE, RMSE y R² sobre el conjunto de prueba, comparando contra un baseline que prediga siempre la media de popularidad.
@@ -297,70 +297,8 @@ Spotify-ML/
 ├── models/
 │   └── (vacío — reservado para EP2)
 │
-└── README.md          ← este archivo
+└── README.md          
 ```
-
----
-
-## 15. Auditoría contra la rúbrica
-
-| Indicador | % | Evidencia en el proyecto | Nivel estimado |
-|---|---|---|---|
-| **IE1:** Fuentes de datos y herramientas colaborativas | 10% | Sección 4: fuente documentada con limitación explícita (sin fecha/versión de API), herramientas justificadas una por una | ✅ Muy buen desempeño |
-| **IE2:** Manipulación y preparación de datos en Python | 30% | `limpiar_spotify()` auditable, `GroupShuffleSplit` por `id_cancion`, imputación de moda solo en entrenamiento, pipeline `ColumnTransformer` sin fuga verificada por código | ✅ Muy buen desempeño |
-| **IE3:** Análisis exploratorio y calidad de los datos | 40% | Auditoría inicial, estadística antes/después de limpiar, histogramas, validación de dominios, outliers IQR justificados, correlaciones, popularidad por género | ✅ Muy buen desempeño |
-| **IE4:** Sesgos, ética y privacidad | 20% | Riesgos cuantificados con evidencia real (ej. género "sleep" concentra el 88% de las eliminaciones por cero en audio), no solo enunciados en general | ✅ Buen desempeño — se fortaleció con evidencia cuantitativa |
-
----
-
-## 16. Preguntas de defensa oral
-
-### IE1 — Fuentes y herramientas
-
-**P1. ¿Qué limitación tiene la fuente de datos?**
-No declara fecha de extracción ni versión de API de Spotify, lo que impide verificar qué tan actualizados están los valores de `popularidad`, un indicador que cambia con el tiempo.
-
-**P2. ¿Para qué usarían GitHub en este proyecto?**
-Control de versiones del notebook y del código, trazabilidad de cambios entre los tres integrantes, y reproducibilidad: cualquier persona puede clonar el repositorio y ejecutar el mismo análisis.
-
-### IE2 — Manipulación de datos
-
-**P3. ¿Qué es data leakage y cómo lo evitaron concretamente?**
-Ocurre cuando información del conjunto de prueba influye en el entrenamiento, inflando artificialmente las métricas. Aquí, 16.641 canciones aparecen en más de un género (misma canción, distintas filas), así que si se particionara por fila una misma canción podría caer en train y test a la vez. Se usó `GroupShuffleSplit` agrupando por `id_cancion`, y se verificó por código que el solape de IDs entre conjuntos es cero.
-
-**P4. ¿Por qué usaron StandardScaler y no MinMaxScaler?**
-StandardScaler es más robusto ante outliers: MinMaxScaler comprime todo al rango [0,1], y si hay valores extremos (por ejemplo duraciones muy largas), el resto de los valores normales queda comprimido en un rango muy pequeño.
-
-**P5. ¿Cuándo se ajusta el imputador de compás, con todo el dataset o solo con entrenamiento?**
-Solo con entrenamiento. La moda (valor 4) se calcula exclusivamente con las filas de `X_train` y luego se aplica también a prueba — ajustarla con todo el dataset sería una forma sutil de fuga de información.
-
-**P6. ¿Por qué no usaron Label Encoding para género musical?**
-Porque asignaría un orden numérico arbitrario entre géneros (género 0 < género 1), que no existe musicalmente. `OneHotEncoder` crea una columna binaria por género sin imponer ese orden falso.
-
-### IE3 — EDA y calidad
-
-**P7. ¿Cuál es la correlación más fuerte entre un atributo de audio y popularidad?**
-`instrumentalidad`, con -0.096: canciones más instrumentales (sin voz) tienden a ser levemente menos populares. Es una correlación débil, explica menos del 1% de la varianza — por eso el proyecto no promete un modelo con R² alto.
-
-**P8. ¿Por qué no eliminaron el 22% de outliers detectados en instrumentalidad?**
-Porque esa variable tiene una distribución bimodal legítima: muchas canciones tienen exactamente 0 (con voz) y otras valores altos (instrumentales puras). El IQR "marca" esa bimodalidad como atípica, pero eliminar esos valores significaría borrar todas las canciones instrumentales del dataset, algo sin justificación real.
-
-**P9. ¿Por qué la mediana de popularidad es 0 en géneros como jazz, latin o rock?**
-Significa que más de la mitad de las canciones de esos géneros no tenían reproducciones relevantes al momento de la extracción del dataset. Puede reflejar catálogo antiguo poco activo o menor exposición algorítmica — no necesariamente menor calidad musical.
-
-### IE4 — Sesgos y ética
-
-**P10. Deme un ejemplo concreto de sesgo que hayan detectado, no genérico.**
-Al eliminar filas con cero en tempo, bailabilidad o energía, el 88% de esas eliminaciones (138 de 157 filas) corresponde al género "sleep". Es esperable — canciones de sueño/ambiente pueden tener parámetros de audio at\u00edpicos por diseño — pero significa que nuestra regla de limpieza reduce más la representación de ese género que la de cualquier otro. Lo dejamos documentado en vez de tratarlo como neutral.
-
-**P11. ¿Qué es un ciclo de retroalimentación algorítmica y por qué es un riesgo ético aquí?**
-Si el modelo predice alta popularidad para una canción y eso influye en que se promocione más, su popularidad real puede subir "confirmando" la predicción — independientemente de la calidad musical. Esto favorece sistemáticamente a canciones/artistas ya conocidos. Por eso proponemos mantener supervisión humana y no usar la predicción como proxy de calidad artística.
-
-**P12. ¿El dataset tiene problemas de privacidad?**
-No en su forma actual: no contiene historiales ni perfiles de usuarios, solo metadatos públicos de canciones. El riesgo aparecería si se incorporaran datos de usuarios individuales (historial de reproducción, ubicación), donde aplicarían principios de minimización de datos y normativa de protección de datos personales.
-
-**P13. ¿Qué harían diferente si tuvieran que mejorar el dataset?**
-Registrar fecha de extracción y versión de API; medir si la eliminación de ceros de audio afecta desproporcionadamente a otros géneros además de "sleep"; y, en EP2, reportar métricas de error por género para verificar si el sesgo potencial de exposición desigual se materializa en el modelo entrenado.
 
 ---
 
