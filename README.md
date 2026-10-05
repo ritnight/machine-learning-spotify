@@ -2,804 +2,381 @@
 
 Proyecto desarrollado para la asignatura **Machine Learning (MLY1101)** de **Duoc UC**.
 
-El proyecto analiza un conjunto de datos de canciones de Spotify con el objetivo de estudiar si sus características musicales permiten anticipar su nivel de popularidad.
+El proyecto analiza un conjunto de datos de canciones de Spotify para estudiar si sus atributos medibles permiten anticipar su popularidad. También busca descubrir patrones (perfiles sonoros y familias de géneros) útiles para la curaduría musical.
 
----
-
-## Integrantes
-
-- Alejandra González
-- Constanza González
-- Diego Villar
-
-**Docente:** Marco Japke  
-**Institución:** Duoc UC  
-**Asignatura:** Machine Learning — MLY1101  
-**Caso:** C — Spotify Tracks  
-**Metodología:** CRISP-DM  
-
----
-
-# Descripción del proyecto
-
-Spotify dispone de grandes cantidades de información asociada a canciones, artistas, géneros y características de audio.
-
-El problema de negocio consiste en determinar si los **atributos medibles de una canción** permiten anticipar su nivel de popularidad en Spotify.
-
-Entre las variables analizadas se encuentran:
-
-- Bailabilidad
-- Energía
-- Volumen
-- Tempo
-- Acusticidad
-- Instrumentalidad
-- Presencia de habla
-- Presencia en vivo
-- Positividad musical
-- Género musical
-- Contenido explícito
-
-La variable objetivo del proyecto es:
-
-```text
-popularidad
-```
-
-Esta variable se mide en una escala de **0 a 100**.
-
-Debido a que la variable objetivo es numérica continua, el problema de Machine Learning se plantea como un problema de **regresión**.
-
-El futuro modelo podría servir como apoyo para:
-
-- Selección de canciones para playlists.
-- Curaduría editorial.
-- Decisiones de promoción.
-- Identificación de patrones relacionados con popularidad.
-- Toma de decisiones basada en datos.
-
----
-
-# Objetivos del proyecto
-
-## Objetivo general
-
-Construir una base analítica reproducible para desarrollar, en una etapa futura, un modelo de regresión que estime la popularidad de una canción a partir de sus atributos musicales medibles.
-
-## Objetivos específicos
-
-- Evaluar la calidad del dataset.
-- Detectar valores nulos, anomalías e inconsistencias.
-- Analizar la distribución de las variables.
-- Estudiar la relación entre las variables predictoras y la popularidad.
-- Preparar y transformar los datos para Machine Learning.
-- Evitar fuga de información entre entrenamiento y prueba.
-- Identificar posibles sesgos asociados a los datos y a las decisiones de limpieza.
-- Construir un pipeline de preprocesamiento reproducible.
-
----
-
-# KPIs del proyecto
-
-Se definieron indicadores de calidad para esta primera etapa y métricas de desempeño para una futura etapa de modelamiento.
-
-| KPI | Tipo | Meta | Estado EP1 |
-|---|---|---:|---:|
-| Cobertura de datos | Calidad | ≥ 99% | ✅ 99,86% |
-| IDs compartidos entre TRAIN y TEST | Calidad | 0 | ✅ 0 |
-| MAE | Modelo | < 10 | 🔄 EP2 |
-| RMSE | Modelo | < 15 | 🔄 EP2 |
-| R² | Modelo | > 0,20 | 🔄 EP2 |
-
-> **Importante:** MAE, RMSE y R² corresponden a objetivos futuros. En esta entrega todavía no se entrena ni evalúa un modelo predictivo.
-
----
-
-# Metodología CRISP-DM
-
-El proyecto sigue la metodología **CRISP-DM**, compuesta por seis fases.
-
-| Fase | Estado |
+| | |
 |---|---|
-| 1. Comprensión del negocio | Completa |
-| 2. Comprensión de los datos | Completa |
-| 3. Preparación de los datos | Completa |
-| 4. Modelado | EP2 |
-| 5. Evaluación | EP2 |
-| 6. Despliegue | Trabajo futuro |
-
-En esta Evaluación Parcial N.º 1 se desarrollan principalmente las tres primeras fases de CRISP-DM.
-
----
-
-# Fuente de datos
-
-El dataset utilizado corresponde a:
-
-**Spotify Tracks Dataset — Kaggle**
-
-Características principales:
-
-- **114.000 registros**
-- **20 columnas útiles**
-- **89.741 canciones únicas**
-- **114 géneros musicales**
-- Existen canciones asociadas a más de un género.
-
-Una misma canción puede aparecer varias veces si está relacionada con distintas categorías musicales.
-
-## Limitaciones de la fuente
-
-El archivo utilizado no declara de forma explícita:
-
-- Fecha de extracción.
-- Versión de la API de Spotify.
-- Criterio exacto de muestreo del catálogo.
-
-Por este motivo, no es posible garantizar que los valores de popularidad representen el estado actual del catálogo de Spotify.
-
-La popularidad es una variable que puede cambiar con el tiempo según el comportamiento de reproducción de los usuarios.
+| **Integrantes** | Alejandra González, Constanza González, Diego Villar |
+| **Docente** | Marco Japke |
+| **Caso** | C — Spotify Tracks |
+| **Metodología** | CRISP-DM |
+| **Entrega actual** | Evaluación Parcial N.º 2 (modelamiento y evaluación) |
+| **Notebook principal** | [`notebooks/EP2_Spotify_CRISP_DM_Modelado.ipynb`](notebooks/EP2_Spotify_CRISP_DM_Modelado.ipynb) |
+| **Notebook EP1 (histórico)** | [`notebooks/EP1_Spotify_CRISP_DM_COMPLETO.ipynb`](notebooks/EP1_Spotify_CRISP_DM_COMPLETO.ipynb) |
 
 ---
 
-# Herramientas utilizadas
+## Resumen ejecutivo
 
-Durante el desarrollo del proyecto se utilizaron las siguientes herramientas:
+| Tarea | Mejor modelo | Resultado en prueba | Baseline |
+|---|---|---|---|
+| Regresión (popularidad 0–100) | HistGradientBoosting | **MAE 11,05 · RMSE 15,77 · R² 0,41** | MAE 17,17 · R² 0,00 |
+| Clasificación (bajo / medio / alto) | Random Forest + sobremuestreo (ROS) | **Accuracy 0,74 · F1 macro 0,68 · AUC 0,88** | F1 macro 0,21 |
+| No supervisado 1 | K-Means (k = 7 perfiles sonoros) | Silueta 0,19 (prueba), estabilidad ARI 0,996 | — |
+| No supervisado 2 | Jerárquico Ward (11 familias de géneros) | Silueta 0,27 | — |
 
-| Herramienta | Uso |
-|---|---|
-| Python | Desarrollo del análisis |
-| pandas | Manipulación de datos |
-| NumPy | Operaciones numéricas |
-| matplotlib | Visualización |
-| seaborn | Visualización estadística |
-| scikit-learn | Preparación de datos y pipeline |
-| Jupyter Notebook | Desarrollo reproducible |
-| Google Colab | Ejecución colaborativa |
-| Git | Control de versiones |
-| GitHub | Repositorio y trabajo colaborativo |
+**Hallazgos principales**
+
+- **Lo que más pesa es el género.** El audio por sí solo explica ~10% de la varianza de la popularidad; con el género se llega a ~40%. Gran parte de esa señal es **cultural** (idioma, mercado, escena), no acústica.
+- **El clasificador sirve para priorizar.** Entre el **1% de canciones con mayor probabilidad de "alto", el 89% es realmente popular** (8 veces la tasa base de 11%).
+- **Comparación de balanceo:** sin balancear, los modelos ignoran la clase "alto" (recall < 0,3). El sobremuestreo maximiza el F1 macro; `class_weight` maximiza el recall de "alto".
+- Los perfiles **"bailables y alegres"** e **"intensos"** concentran la mayor proporción de éxitos. Los perfiles instrumentales, ambientales y hablados tienen la menor.
 
 ---
 
-# Variables principales
+# 1. Descripción del problema de negocio
 
-| Variable | Descripción | Tipo |
+Un equipo de inteligencia musical necesita saber si los **atributos medibles de una canción** (audio, género, contenido explícito) permiten anticipar su nivel de popularidad en Spotify. El objetivo es apoyar:
+
+- la curaduría editorial y el armado de playlists;
+- la priorización de lanzamientos para escucha y promoción;
+- la organización del catálogo en segmentos y familias manejables.
+
+La popularidad es una variable de **0 a 100** calculada por Spotify. Se aborda de dos formas complementarias:
+
+- como **regresión**: estimar el valor de popularidad;
+- como **clasificación**: estimar el nivel bajo / medio / alto, que es más accionable.
+
+# 2. Objetivos del proyecto
+
+**Objetivo general.** Desarrollar, comparar y evaluar modelos de Machine Learning que estimen la popularidad de una canción, y descubrir mediante aprendizaje no supervisado patrones útiles para la curaduría.
+
+**Objetivos específicos**
+
+1. Asegurar una base de datos limpia, auditable y **sin fuga de información** (EP1, revisada en EP2).
+2. Entrenar y comparar **4 modelos de regresión** contra un baseline.
+3. Entrenar y comparar **4 modelos de clasificación**, evaluando **distintos métodos de balanceo**.
+4. Segmentar el catálogo en **perfiles sonoros** (K-Means).
+5. Agrupar los 114 géneros en **familias** (clustering jerárquico).
+6. Cuantificar sesgos del modelo (error por género) y traducir los resultados en recomendaciones.
+
+# 3. KPIs
+
+Todos los umbrales se fijaron **antes** de evaluar sobre el conjunto de prueba.
+
+| KPI | Tipo | Umbral | Resultado | Cumple |
+|---|---|---|---:|:---:|
+| Cobertura de datos | Calidad | ≥ 99% | 99,86% | ✅ |
+| Canciones (artista + título) compartidas train/test | Calidad | 0 | 0 | ✅ |
+| MAE (HistGradientBoosting) | Regresión | < 10 | 11,05 | ❌ |
+| RMSE (HistGradientBoosting) | Regresión | < 15 | 15,77 | ❌ |
+| R² (HistGradientBoosting) | Regresión | > 0,20 | 0,410 | ✅ |
+| Accuracy (Random Forest) | Clasificación | > 0,50 | 0,738 | ✅ |
+| F1 macro (Random Forest) | Clasificación | > 0,45 | 0,678 | ✅ |
+| Recall clase "alto" (Random Forest) | Clasificación | ≥ 0,60 | 0,505 | ❌ |
+| Silueta K-Means (prueba) | No supervisado | ≥ 0,15 | 0,192 | ✅ |
+
+**KPIs no cumplidos.**
+
+- **MAE y RMSE:** el error se concentra en los extremos. Las canciones con popularidad 0 suelen ser reediciones con otro ID, y los grandes éxitos dependen de información ausente en los datos (artista, marketing, playlists).
+- **Recall de "alto":** la regresión logística + SMOTE sí lo cumple (0,71), a cambio de menor precisión (0,32). Con Random Forest también se puede reducir el umbral de decisión. Ver la sección 8.
+
+# 4. Fuente de datos
+
+**Spotify Tracks Dataset — Kaggle** (`data/raw/Spotify_Tracks_Dataset.csv`)
+
+- 114.000 filas, 20 columnas útiles, 89.741 IDs de canción, **114 géneros**.
+- Una canción aparece una vez por cada género asociado.
+- **Limitaciones:** el dataset no declara fecha de extracción ni versión de la API, y la popularidad cambia en el tiempo. Uso académico; no se distribuye audio.
+
+| Variable | Tipo | Rol |
 |---|---|---|
-| `popularidad` | Popularidad de la canción | Target, 0–100 |
-| `duracion_ms` | Duración de la canción | Numérica |
-| `bailabilidad` | Qué tan adecuada es para bailar | Numérica, 0–1 |
-| `energia` | Intensidad y actividad percibida | Numérica, 0–1 |
-| `volumen_db` | Volumen promedio | Numérica, dB |
-| `tempo_bpm` | Velocidad musical | Numérica, BPM |
-| `presencia_habla` | Presencia de palabras habladas | Numérica, 0–1 |
-| `acusticidad` | Nivel de características acústicas | Numérica, 0–1 |
-| `instrumentalidad` | Presencia de contenido instrumental | Numérica, 0–1 |
-| `presencia_en_vivo` | Probabilidad de grabación en vivo | Numérica, 0–1 |
-| `positividad` | Positividad musical | Numérica, 0–1 |
-| `contenido_explicito` | Indica contenido explícito | Categórica |
-| `tonalidad` | Tonalidad musical | Categórica |
-| `modo` | Modo mayor o menor | Categórica |
-| `compas` | Compás musical | Categórica |
-| `genero_musical` | Género musical | Categórica |
-| `id_cancion` | Identificador de la canción | Excluir del modelo |
+| `popularidad` | 0–100 | **Target** (regresión y, discretizada, clasificación) |
+| `duracion_ms`, `bailabilidad`, `energia`, `volumen_db`, `presencia_habla`, `acusticidad`, `instrumentalidad`, `presencia_en_vivo`, `positividad`, `tempo_bpm` | Numéricas | Predictoras |
+| `contenido_explicito`, `tonalidad`, `modo`, `compas` | Categóricas (códigos) | Predictoras (one-hot) |
+| `genero_musical` | Categórica, 114 valores | Predictora (**multi-hot**: 114 columnas binarias) |
+| `id_cancion`, `artistas`, `nombre_album`, `nombre_cancion` | Texto | Identificadores (no se usan como predictoras) |
 
-> `tonalidad`, `modo` y `compas` se consideran variables categóricas porque representan códigos musicales y no magnitudes continuas.
+# 5. Metodología CRISP-DM
 
----
+| Fase | Contenido | Estado |
+|---|---|---|
+| 1. Comprensión del negocio | Problema, objetivos, KPIs | ✅ (actualizada en EP2) |
+| 2. Comprensión de los datos | Auditoría de calidad, distribuciones, correlaciones | ✅ EP1 |
+| 3. Preparación de los datos | Limpieza, EDA, representación multi-hot, partición sin fuga, targets | ✅ (corregida en EP2) |
+| 4. Modelado | 4 regresiones, 4 clasificaciones + balanceo, K-Means, jerárquico | ✅ EP2 |
+| 5. Evaluación | Métricas en prueba, KPIs, importancia de variables, sesgo por género | ✅ EP2 |
+| 6. Despliegue | Modelos serializados en `models/`, propuesta de uso y monitoreo | 🟡 Propuesta |
 
-# Cómo se miden los datos
+## 5.1 Revisión del EP1 y correcciones aplicadas
 
-Las variables del proyecto utilizan diferentes escalas de medición.
+| # | Problema en EP1 | Corrección en EP2 |
+|---|---|---|
+| 1 | El README planteaba regresión y el notebook clasificación, con KPIs distintos. | Se abordan ambas tareas, con KPIs unificados. |
+| 2 | Partición agrupada solo por `id_cancion`. **4.737 pares artista + título tienen varios IDs** (reediciones; 49% con audio idéntico). **1.894** de ellos habrían quedado a la vez en train y test (**fuga de información**). | La partición (`GroupShuffleSplit`) y la validación cruzada (`GroupKFold`) se agrupan por `clave_cancion` = artista + título normalizados. |
+| 3 | El modelado usaba una fila por canción-género, lo que sobrerrepresenta a 16.299 canciones con varios géneros. | **1 canción = 1 fila**, con géneros codificados en *multi-hot*. |
+| 4 | La tabla multi-género se construía con el compás ya imputado fuera del pipeline. | Se construye desde `df_base`, y la moda se aprende dentro del pipeline en cada pliegue. |
+| 5 | Target de clasificación por **terciles** (cortes 23 y 43): con eso, una canción con popularidad 45 era "alta". | **Umbrales de negocio fijos**: bajo < 30, medio 30–59, alto ≥ 60. Al no aprenderse de los datos, no generan fuga. |
+| 6 | Ruta del CSV relativa fija (fallaba fuera de `notebooks/`). | Búsqueda automática de la ruta. |
+| 7 | Celdas vacías, desordenadas o con referencias erróneas. | Completadas y reordenadas. |
 
-| Variable | Medición |
-|---|---|
-| Popularidad | 0–100 |
-| Bailabilidad | 0–1 |
-| Energía | 0–1 |
-| Acusticidad | 0–1 |
-| Instrumentalidad | 0–1 |
-| Presencia de habla | 0–1 |
-| Presencia en vivo | 0–1 |
-| Positividad musical | 0–1 |
-| Volumen | Decibeles (dB) |
-| Tempo | Beats Per Minute (BPM) |
-| Duración | Milisegundos |
-| Género | Categoría |
-| Contenido explícito | Categoría |
-| Tonalidad | Código musical |
-| Compás | Código musical |
+Las **reglas de limpieza de la EP1 se mantienen**: 158 filas eliminadas (99,86% conservado), 20 álbumes imputados y la moda de compás. Su justificación está en el notebook (sección 3.1).
 
-Para estudiar cómo estas variables se relacionan con la variable objetivo se utilizaron:
+# 6. Preparación y análisis exploratorio (EDA)
 
-- Histogramas.
-- Estadísticos descriptivos.
-- Correlaciones para variables numéricas.
-- Comparaciones por grupo para variables categóricas.
-- Análisis de valores atípicos.
-- Comparación de distribuciones.
-
----
-
-# Auditoría inicial de calidad
-
-Antes de realizar la limpieza se analizaron separadamente:
-
-- Valores nulos.
-- Valores `"?"`.
-- Textos vacíos.
-- Valores iguales a cero.
-- Valores fuera del dominio esperado.
-
-Principales incidencias detectadas:
-
-| Variable | Incidencias |
-|---|---:|
-| `compas` | 163 |
-| `tempo_bpm` | 157 ceros |
-| `bailabilidad` | 157 ceros |
-| `nombre_album` | 20 `"?"` + 1 nulo |
-| `energia` | 1 cero |
-| `duracion_ms` | 1 cero |
-
-Un valor igual a cero no fue tratado automáticamente como un dato faltante. Primero se evaluó el significado de cada variable.
-
-## Gráfico de auditoría inicial
-
-![Auditoría inicial de calidad](images/00_calidad_datos_crudos.png)
-
----
-
-# Distribución preliminar de los datos
-
-Antes de aplicar las reglas de preparación se estudiaron las distribuciones de las principales variables numéricas.
-
-![Distribuciones preliminares](images/00_distribuciones_crudas.png)
-
-Este análisis permitió identificar:
-
-- Distribuciones asimétricas.
-- Concentraciones de valores.
-- Posibles valores atípicos.
-- Variables con fuerte presencia de ceros.
-- Diferencias importantes entre escalas.
-
----
-
-# Limpieza y preparación de datos
-
-Las principales reglas aplicadas fueron:
+## 6.1 Calidad y limpieza (EP1)
 
 | Variable | Condición | Tratamiento |
 |---|---|---|
-| `artistas` | Nulo, vacío o `"?"` | Eliminar fila |
-| `nombre_cancion` | Nulo, vacío o `"?"` | Eliminar fila |
-| `nombre_album` | Nulo, vacío o `"?"` | Imputar `DESCONOCIDO` |
-| `tempo_bpm` | Igual a 0 | Eliminar fila |
-| `bailabilidad` | Igual a 0 | Eliminar fila |
-| `energia` | Igual a 0 | Eliminar fila |
-| `compas` | 0 o nulo | Imputar moda de TRAIN |
-| `duracion_ms` | Cero, negativa o nula | Eliminar fila |
+| `artistas`, `nombre_cancion` | Nulo, vacío o `?` | Eliminar fila |
+| `nombre_album` | Nulo, vacío o `?` | Imputar `DESCONOCIDO` |
+| `tempo_bpm`, `bailabilidad`, `energia` | Igual a 0 | Eliminar fila (decisión metodológica; afecta sobre todo a `sleep`) |
+| `compas` | 0 o nulo | Moda aprendida **solo en entrenamiento** (dentro del pipeline) |
+| `duracion_ms` | ≤ 0 o nula | Eliminar fila |
+| Outliers (IQR) | — | Se detectan pero **no se eliminan**: son valores musicales válidos |
 
-## Resultado de la limpieza
+![Auditoría inicial](images/00_calidad_datos_crudos.png)
 
-| Indicador | Resultado |
+## 6.2 Hallazgos del EDA
+
+- **Ninguna variable de audio tiene correlación lineal fuerte con la popularidad** (|r| < 0,10). La más alta en valor absoluto es instrumentalidad (−0,096).
+- Entre predictoras hay multicolinealidad: energía ↔ volumen ≈ +0,76 y energía ↔ acusticidad ≈ −0,74. Se maneja con regularización en los modelos lineales.
+- **La popularidad media varía mucho entre géneros** (pop-film y k-pop arriba; iranian y romance abajo).
+- **10,6% de las canciones tiene popularidad 0.** Muchas son reediciones de una canción que sí es popular con otro ID; es ruido propio de la fuente.
+
+| | |
+|---|---|
+| ![Correlación](images/03_matriz_correlacion.png) | ![Popularidad por género](images/04_popularidad_por_genero.png) |
+
+## 6.3 Base de modelamiento (EP2)
+
+- **89.583 canciones** (1 fila por ID), con 10 numéricas, 4 categóricas y 114 columnas de género.
+- Partición **80/20 agrupada por artista + título**: 71.740 canciones en entrenamiento y 17.843 en prueba, con 0 claves y 0 IDs compartidos.
+- **Pipeline** (`ColumnTransformer`, ajustado solo con los pliegues de entrenamiento):
+  - numéricas → `StandardScaler`;
+  - categóricas → `SimpleImputer(most_frequent)` + `OneHotEncoder`;
+  - géneros → `passthrough`.
+
+  Resultado: 144 columnas.
+- **Targets:**
+  - **Regresión:** `popularidad`.
+  - **Clasificación:** `bajo` (0–29) 45%, `medio` (30–59) 44%, `alto` (≥ 60) **11%**. Es un problema desbalanceado.
+
+![Target de clasificación](images/06_target_clasificacion.png)
+
+# 7. Modelado
+
+**Validación:** `GroupKFold` de 3 pliegues por artista + título, solo con los datos de entrenamiento. Los hiperparámetros se ajustan con `RandomizedSearchCV`. El preprocesamiento y el balanceo van dentro del pipeline, y el conjunto de prueba se usa **una sola vez**.
+
+## 7.1 Regresión: 4 modelos
+
+| Modelo | Por qué se incluye | Mejores hiperparámetros | MAE CV | R² CV |
+|---|---|---|---:|---:|
+| Baseline (media) | Referencia mínima | — | 17,27 | 0,00 |
+| **Ridge** | Lineal, interpretable; la L2 controla la multicolinealidad | `alpha=0.01` | 11,86 | 0,351 |
+| **KNN** | Hipótesis "canciones similares → popularidad similar" | `k=10`, `weights=distance` | 13,50 | 0,206 |
+| **Random Forest** | *Bagging*: no linealidad, interacciones, robusto a outliers | `max_features=0.33`, `min_samples_leaf=5` | 11,34 | 0,386 |
+| **HistGradientBoosting** | *Boosting*: estado del arte en datos tabulares, eficiente | `lr=0.03`, `max_iter=600`, `max_leaf_nodes=63` | **11,17** | **0,395** |
+
+Los árboles superan a Ridge, lo que confirma que hay relaciones **no lineales** que la correlación no capturaba. KNN es el peor por la alta dimensionalidad (144 columnas, la mayoría binarias).
+
+![Comparación regresión](images/07_comparacion_regresion_cv.png)
+
+## 7.2 Clasificación: 4 modelos y comparación de métodos de balanceo
+
+Se probaron **5 métodos de balanceo × 4 modelos** (más SMOTENC en HistGradientBoosting). El remuestreo se aplicó solo a los pliegues de entrenamiento.
+
+| Método | F1 macro promedio | Recall "alto" promedio | Comentario |
+|---|---:|---:|---|
+| Sin balanceo | 0,603 | 0,217 | Alta accuracy, pero ignora la clase "alto" |
+| `class_weight='balanced'` | **0,642** | 0,706 | Mejor promedio; no agranda los datos (no aplica a KNN) |
+| Submuestreo (RUS) | 0,598 | **0,726** | Descarta ~70% de los datos; peor F1 |
+| Sobremuestreo (ROS) | 0,618 | 0,672 | Mejor F1 en Random Forest y KNN |
+| SMOTE | 0,614 | 0,638 | Mejor F1 en regresión logística y HistGradientBoosting |
+| SMOTENC (solo HGB) | 0,660 | 0,448 | No supera a SMOTE (0,666) y tarda ~16× más |
+
+![Balanceo](images/08_comparacion_balanceo.png)
+
+Cada modelo se ajustó con su mejor método (criterio: F1 macro en CV):
+
+| Modelo | Balanceo | Mejores hiperparámetros | F1 macro CV | Recall "alto" CV |
+|---|---|---|---:|---:|
+| Baseline (clase mayoritaria) | — | — | 0,208 | 0,000 |
+| **Regresión logística** | SMOTE | `C=1.0` | 0,620 | **0,716** |
+| **KNN** | ROS | `k=25`, `weights=distance` | 0,550 | 0,634 |
+| **Random Forest** | ROS | `max_features=0.2`, `min_samples_leaf=3` | **0,672** | 0,517 |
+| **HistGradientBoosting** | SMOTE | `lr=0.03`, `max_iter=300`, `max_leaf_nodes=63` | 0,668 | 0,465 |
+
+## 7.3 No supervisado 1 — K-Means: perfiles sonoros
+
+- **Objetivo:** segmentar las canciones por **sonido** para crear playlists por contexto, identificar los perfiles con más tracción y contrastar el sonido con las etiquetas de género.
+- **Variables:** las 9 de audio, estandarizadas (sin popularidad ni género).
+- **Elección de k:** codo + silueta, dentro de un rango de negocio de 4 a 8 perfiles → **k = 7**.
+
+| Perfil | Rasgos | % catálogo | Pop. media | % "alto" |
+|---|---|---:|---:|---:|
+| Bailables y alegres | bailabilidad 0,71, positividad 0,70 | 30,8% | 34,4 | **14,6%** |
+| Intensas y ruidosas | energía 0,82, −5,4 dB, 140 BPM | 22,6% | 35,4 | 12,6% |
+| Acústicas melódicas | acusticidad 0,69 | 20,2% | 33,4 | 10,9% |
+| Electrónica instrumental | instrumentalidad 0,80, energía 0,74 | 11,3% | 27,4 | 3,6% |
+| Ambientales / clásicas | acusticidad 0,87, −21 dB | 7,1% | 28,4 | 6,6% |
+| En vivo | presencia en vivo 0,75 | 6,9% | 35,4 | 6,5% |
+| Habladas | presencia de habla 0,84 | 1,2% | 24,5 | 1,3% |
+
+La silueta es 0,198 en entrenamiento y 0,192 en prueba (los perfiles generalizan), y el ARI entre semillas es 0,996 (la solución es estable).
+
+| | |
+|---|---|
+| ![Centroides](images/10_kmeans_centroides.png) | ![PCA y popularidad](images/11_kmeans_pca_popularidad.png) |
+
+## 7.4 No supervisado 2 — Clustering jerárquico: familias de géneros
+
+- **Objetivo:** reducir **114 géneros a familias** para organizar el catálogo, recomendar géneros afines y detectar etiquetas redundantes.
+- **Método:** cada género se describe por su perfil de audio medio (calculado en entrenamiento) y se agrupa con Ward. Se eligen **11 familias** por silueta (0,274) dentro del rango 6–12.
+- **Familias destacadas:**
+  - ambiental/clásica (ambient, classical, piano, sleep, new-age);
+  - metal extremo (black, death, grindcore);
+  - electrónica de club (techno, house, minimal);
+  - bailables/urbanas (hip-hop, reggaeton, k-pop, latin, edm);
+  - música brasileña en vivo (pagode, samba, sertanejo);
+  - comedia;
+  - una gran familia pop/folk/cantautor de 33 géneros que **suenan casi igual**.
+- **Ablación** (HGB, CV) para medir cuánta señal predictiva conserva cada representación del género:
+
+| Representación del género | R² CV |
 |---|---:|
-| Filas originales | 114.000 |
-| Filas eliminadas | 158 |
-| Filas conservadas | 113.842 |
-| Porcentaje conservado | **99,86%** |
-| Álbumes imputados | 20 |
-| Compases imputados | 6 |
-| Moda de compás | 4 |
+| Sin género | 0,105 |
+| 11 familias | 0,190 |
+| 114 géneros | 0,383 |
 
-La eliminación de ceros en algunas características de audio corresponde a una **decisión metodológica del proyecto**.
+  El valor predictivo del género es en gran parte cultural y se pierde al agruparlo por sonido.
 
-Esta decisión puede modificar la representación de algunos géneros musicales y por esta razón su impacto se considera dentro del análisis de sesgos.
+| | |
+|---|---|
+| ![Dendrograma](images/12_dendrograma_generos.png) | ![Familias](images/13_familias_generos.png) |
 
----
+# 8. Evaluación (conjunto de prueba)
 
-# Prevención de Data Leakage
+## 8.1 Regresión
 
-En el dataset existen:
+| Modelo | MAE | RMSE | R² | Mejora MAE vs baseline |
+|---|---:|---:|---:|---:|
+| Baseline | 17,17 | 20,53 | 0,000 | — |
+| Ridge | 11,86 | 16,53 | 0,352 | 30,9% |
+| KNN | 13,09 | 17,96 | 0,235 | 23,8% |
+| Random Forest | 11,06 | 15,79 | 0,409 | 35,6% |
+| **HistGradientBoosting** | **11,05** | **15,77** | **0,410** | **35,6%** |
 
-- **114.000 filas**
-- **89.741 canciones únicas**
-- **16.641 canciones que aparecen asociadas a más de un género**
+Las métricas de prueba coinciden con las de CV, así que **no hay sobreajuste**. El error se concentra en los extremos:
 
-Si la división entre entrenamiento y prueba se realizara aleatoriamente por filas, una misma canción podría aparecer simultáneamente en ambos conjuntos.
+- las canciones con popularidad 0 se sobreestiman en ~25 puntos;
+- los éxitos (≥ 61) se subestiman entre 23 y 41 puntos;
+- en el rango 21–40, donde está la mayor parte del catálogo, el MAE es de 6 puntos.
 
-Esto produciría **Data Leakage**.
+![Regresión test](images/14_regresion_test.png)
 
-Para evitarlo se utilizó:
+## 8.2 Clasificación
+
+| Modelo | Accuracy | F1 macro | Recall "alto" | Precisión "alto" | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Baseline | 0,449 | 0,206 | 0,000 | 0,000 | 0,500 |
+| Regresión logística + SMOTE | 0,670 | 0,625 | **0,709** | 0,324 | 0,853 |
+| KNN + ROS | 0,609 | 0,569 | 0,655 | 0,276 | 0,793 |
+| **Random Forest + ROS** | **0,738** | **0,678** | 0,505 | **0,487** | 0,879 |
+| HistGradientBoosting + SMOTE | 0,736 | 0,673 | 0,493 | 0,474 | **0,881** |
+
+- Con el mejor modelo (Random Forest), "bajo" y "medio" se reconocen bien (F1 ≈ 0,78 y 0,76).
+- La clase "alto" se confunde sobre todo con "medio": los errores ocurren entre clases vecinas.
+- **Lista corta:** ordenando por probabilidad de "alto", el **top 1% tiene 89% de aciertos**, el top 5% un 62% y el top 10% un 51% (tasa base: 11%).
+
+![Clasificación test](images/15_clasificacion_test.png)
+
+## 8.3 Importancia de variables y sesgo
+
+- **Importancia por permutación:** el género, permutado como bloque, es por lejos la variable más importante (+7,2 de MAE al permutarlo). Le siguen instrumentalidad, acusticidad, energía, duración y volumen. Tonalidad, compás y tempo casi no aportan.
+- **Sesgo por género:** el MAE va de **2,6** (gospel, forró) a **32,9** (electro, dance, house, edm), y en 23 de 114 géneros supera 1,5 veces el global. El error no depende de la popularidad media del género (r = 0,04), sino de su **heterogeneidad**: hay géneros que mezclan éxitos con reediciones de popularidad 0. Las predicciones en esos géneros deben usarse con mayor cautela.
+- **Sesgo de la limpieza:** el género `sleep`, el más afectado por la limpieza de EP1, tiene un MAE de 10,7, similar al global. No se observa un perjuicio en el desempeño.
+
+| | |
+|---|---|
+| ![Importancia](images/16_importancia_variables.png) | ![Error por género](images/17_error_por_genero.png) |
+
+## 8.4 Recomendaciones para el negocio
+
+1. **Usar el clasificador como filtro de priorización** para curadores: revisar primero el top 1–5% por probabilidad de "alto". Si el objetivo es no perder posibles éxitos, usar la regresión logística + SMOTE o bajar el umbral de decisión. **Siempre con revisión humana.**
+2. **Usar el regresor** para estimar el nivel general de una canción, no para identificar éxitos puntuales.
+3. **Usar los perfiles sonoros** para playlists por contexto (fiesta, foco, relajación) y las **familias de géneros** para la navegación y las recomendaciones del catálogo.
+4. **Para mejorar los modelos:**
+   - incorporar variables de artista (seguidores, historial), fecha de lanzamiento y exposición en playlists;
+   - deduplicar las reediciones en la fuente.
+
+# 9. Despliegue (propuesta)
+
+`models/` contiene pipelines completos (preprocesamiento + modelo) serializados con `joblib`:
+
+| Archivo | Contenido |
+|---|---|
+| `regresor_popularidad.joblib` | HistGradientBoosting (regresión) |
+| `clasificador_popularidad.joblib` | Random Forest + ROS (clasificación) |
+| `kmeans_perfiles_sonoros.joblib` | `StandardScaler` + K-Means (k = 7) |
+| `familias_genero.joblib` | Mapeo género → familia |
 
 ```python
-GroupShuffleSplit
+import joblib
+modelo = joblib.load('models/clasificador_popularidad.joblib')
+modelo.predict_proba(X_nuevo)  # mismas columnas que X (ver notebook, sección 3.13)
 ```
 
-agrupando por:
+**Plan de monitoreo:**
 
-```python
-id_cancion
-```
+- Recalcular MAE, F1 macro, recall de "alto" y error por género cada mes, con canciones cuya popularidad ya se observó.
+- Vigilar la deriva de las variables de entrada.
+- Reentrenar si el F1 macro cae más de 0,05 o aparecen géneros nuevos.
 
-El resultado de la partición fue:
+# 10. Ética, sesgos y privacidad
+
+- **Ciclo de retroalimentación:** lo que se promociona se vuelve popular. Por eso el modelo debe usarse **solo como apoyo**, con supervisión humana.
+- **Popularidad ≠ calidad artística.** El modelo no mide el mérito de un artista.
+- **Sesgo de limpieza:** el 88% de las filas eliminadas por ceros de audio son del género `sleep`. Se evaluó su efecto en el desempeño y no se observa perjuicio.
+- **Error desigual por género:** se reporta en la sección 8.3 y debe monitorearse.
+- **Privacidad:** el dataset no contiene datos personales de usuarios, así que el riesgo es bajo. Si se incorporaran historiales de escucha, aplicarían minimización de datos y la normativa de protección de datos.
+
+# 11. Estructura del proyecto
 
 ```text
-TRAIN: 91.072 filas
-TEST: 22.770 filas
-IDs compartidos entre TRAIN y TEST: 0
-```
-
-De esta manera, una canción completa queda solamente en uno de los conjuntos.
-
-Además:
-
-- La moda utilizada para imputar `compas` se aprende únicamente con TRAIN.
-- El pipeline de preprocesamiento se ajusta únicamente con TRAIN.
-- TEST se utiliza posteriormente sin participar en el aprendizaje de las transformaciones.
-
----
-
-# Análisis exploratorio de datos
-
-## Distribución de variables numéricas
-
-Después de la preparación se analizaron nuevamente las variables numéricas.
-
-![Distribución de variables numéricas](images/01_histogramas_numericas.png)
-
-Se evaluaron:
-
-- Media.
-- Mediana.
-- Forma de la distribución.
-- Asimetría.
-- Valores extremos.
-- Diferencias de escala.
-
----
-
-# Variables categóricas
-
-También se analizaron las distribuciones de variables categóricas como:
-
-- Contenido explícito.
-- Tonalidad.
-- Modo musical.
-- Compás.
-
-![Distribución de variables categóricas](images/02_variables_categoricas.png)
-
----
-
-# Relación entre variables y popularidad
-
-Uno de los principales objetivos del EDA fue estudiar cómo se relacionan las variables predictoras con la variable objetivo:
-
-```text
-popularidad
-```
-
-Para las variables numéricas se utilizaron correlaciones.
-
-## Matriz de correlación
-
-![Matriz de correlación](images/03_matriz_correlacion.png)
-
-Principales correlaciones con `popularidad`:
-
-| Variable | Correlación |
-|---|---:|
-| Instrumentalidad | -0,096 |
-| Volumen | +0,052 |
-| Presencia de habla | -0,045 |
-| Positividad musical | -0,040 |
-| Bailabilidad | +0,037 |
-| Acusticidad | -0,026 |
-
-## Hallazgo principal
-
-Ninguna característica de audio individual presenta una **correlación lineal fuerte con popularidad**.
-
-Esto significa que ninguna de estas variables, analizada de forma independiente, explica fuertemente el comportamiento de la variable objetivo.
-
-Sin embargo, esto no descarta:
-
-- Relaciones no lineales.
-- Interacciones entre variables.
-- Efectos combinados.
-- Influencia del género musical.
-- Relaciones que puedan ser detectadas por modelos más complejos.
-
----
-
-# Correlaciones entre variables predictoras
-
-Aunque las correlaciones con popularidad son débiles, existen relaciones importantes entre algunas variables predictoras.
-
-Entre las más relevantes:
-
-```text
-Energía ↔ Volumen ≈ +0,76
-Energía ↔ Acusticidad ≈ -0,74
-```
-
-Esto indica que:
-
-- Las canciones con mayor energía tienden a presentar un volumen mayor.
-- Las canciones con mayor energía tienden a presentar menor acusticidad.
-
-Estas relaciones corresponden a asociaciones entre variables predictoras y no deben confundirse con relaciones directas con la popularidad.
-
----
-
-# Popularidad según género musical
-
-Para estudiar variables categóricas se comparó la popularidad entre diferentes grupos.
-
-![Popularidad por género](images/04_popularidad_por_genero.png)
-
-La popularidad media global del dataset es aproximadamente:
-
-```text
-33,2
-```
-
-Se observan diferencias importantes entre géneros.
-
-Algunos de los géneros con mayor popularidad media incluyen:
-
-- `pop-film`
-- `k-pop`
-- `chill`
-- `sad`
-- `grunge`
-
-Mientras que otros presentan una popularidad media considerablemente menor.
-
-> Estas diferencias muestran una asociación entre género y popularidad, pero no permiten afirmar una relación causal.
-
----
-
-# Popularidad según contenido explícito
-
-También se analizó la distribución de la popularidad según si la canción presenta contenido explícito.
-
-![Popularidad según contenido explícito](images/05_popularidad_explicit.png)
-
-El gráfico permite observar diferencias en la distribución de popularidad entre:
-
-- Canciones no explícitas.
-- Canciones explícitas.
-
-Sin embargo, estas diferencias no demuestran que el contenido explícito sea la causa de una mayor o menor popularidad.
-
----
-
-# Outliers
-
-Durante el análisis se utilizó el criterio del rango intercuartílico **IQR** para detectar posibles valores atípicos.
-
-Los outliers no fueron eliminados automáticamente.
-
-La razón es que un valor extremo no necesariamente representa un error.
-
-Por ejemplo:
-
-- Una canción puede tener una duración considerablemente mayor que el promedio.
-- Una canción puede tener instrumentalidad cercana a 1.
-- Una canción puede tener características de audio poco comunes y seguir siendo un registro válido.
-
-Por lo tanto, los outliers fueron analizados antes de decidir cualquier tratamiento.
-
----
-
-# Sesgos detectados
-
-Durante el proceso de limpieza se identificó un efecto importante.
-
-De las **157 filas eliminadas por ceros en tempo, bailabilidad o energía**:
-
-```text
-138 pertenecían al género "sleep".
-```
-
-Esto equivale aproximadamente a:
-
-```text
-88%
-```
-
-Por lo tanto, la regla de limpieza afecta de forma desproporcionada a este género.
-
-Esto representa un posible sesgo porque reduce su representación dentro del conjunto de datos utilizado posteriormente.
-
----
-
-# Otros riesgos éticos
-
-También se identificaron otros riesgos asociados al futuro uso de un modelo predictivo.
-
-## Popularidad histórica
-
-La popularidad puede estar influenciada por decisiones anteriores de:
-
-- Promoción.
-- Playlists.
-- Algoritmos de recomendación.
-- Exposición editorial.
-
-Por lo tanto, un modelo podría aprender y reproducir patrones que ya existen dentro de la plataforma.
-
-## Ciclo de retroalimentación
-
-Si una canción recibe una predicción alta y posteriormente obtiene mayor exposición por esa razón, su popularidad podría aumentar.
-
-Esto podría reforzar las predicciones originales y favorecer sistemáticamente ciertos tipos de contenido.
-
-## Popularidad no equivale a calidad artística
-
-El objetivo de un futuro modelo sería estimar popularidad.
-
-No debe utilizarse como una medida directa de:
-
-- Calidad musical.
-- Valor artístico.
-- Mérito de un artista.
-
-Por esta razón se recomienda mantener supervisión humana en futuras aplicaciones.
-
----
-
-# Privacidad
-
-El dataset actual no contiene:
-
-- Historiales de reproducción de usuarios.
-- Perfiles personales.
-- Ubicación.
-- Información privada individual.
-- Preferencias individuales identificables.
-
-El dataset contiene principalmente información y características asociadas a canciones.
-
-Por lo tanto, el riesgo actual de privacidad individual es considerado **bajo**.
-
-Si en una etapa futura se incorporaran datos de usuarios, sería necesario considerar principios de:
-
-- Minimización de datos.
-- Protección de información personal.
-- Uso responsable.
-- Consentimiento.
-- Cumplimiento de normativa aplicable.
-
----
-
-# Pipeline de preparación para Machine Learning
-
-El proyecto deja preparado un pipeline de transformación mediante `ColumnTransformer`.
-
-## Variables numéricas
-
-Las variables numéricas utilizan:
-
-```python
-StandardScaler()
-```
-
-## Variables categóricas
-
-Las variables categóricas utilizan:
-
-```python
-OneHotEncoder(handle_unknown="ignore")
-```
-
-## Compás
-
-La variable `compas` utiliza:
-
-```python
-SimpleImputer(strategy="most_frequent")
-```
-
-seguido de:
-
-```python
-OneHotEncoder(handle_unknown="ignore")
-```
-
-El flujo general es:
-
-```text
-Variables numéricas
-        ↓
- StandardScaler
-        │
-        │
-Variables categóricas
-        ↓
- OneHotEncoder
-        │
-        │
-      Compás
-        ↓
- SimpleImputer
-        ↓
- OneHotEncoder
-        │
-        ▼
- ColumnTransformer
-        ↓
- Datos preparados
-```
-
-El pipeline se ajusta utilizando exclusivamente los datos de entrenamiento.
-
-> En EP1 el pipeline queda construido y verificado, pero todavía no se entrena ningún modelo predictivo.
-
----
-
-# Estructura del proyecto
-
-```text
-Machine-Learning-Spotify/
-│
+machine-learning-spotify/
 ├── data/
-│   ├── raw/
-│   │   └── Spotify_Tracks_Dataset.csv
-│   │
+│   ├── raw/Spotify_Tracks_Dataset.csv
 │   └── processed/
-│       ├── spotify_clean.csv
-│       ├── spotify_base_modelo.csv
-│       ├── auditoria_faltantes.csv
-│       ├── resumen_eliminacion.csv
-│       ├── balance_limpieza.csv
-│       ├── filas_descartadas.csv
-│       ├── particion_modelo.csv
-│       ├── outliers_iqr_summary.csv
-│       └── variables_modelo.csv
-│
+│       ├── spotify_clean.csv, spotify_base_modelo.csv     # limpieza (EP1)
+│       ├── spotify_multigenero.csv, particion_modelo.csv  # base de modelamiento EP2
+│       ├── auditoria_faltantes.csv, balance_limpieza.csv, filas_descartadas.csv, ...
+│       ├── resultados_cv_regresion.csv, resultados_test_regresion.csv
+│       ├── resultados_balanceo.csv, resultados_cv_clasificacion.csv, resultados_test_clasificacion.csv
+│       ├── familias_genero.csv, importancia_permutacion.csv, errores_por_genero.csv
+│       └── kpis_ep2.csv
+├── images/          # 00–05 EDA (EP1) · 06–17 modelamiento y evaluación (EP2)
+├── models/          # pipelines serializados (joblib)
 ├── notebooks/
-│   └── EP1_Spotify_CRISP_DM_COMPLETO.ipynb
-│
-├── images/
-│   ├── 00_calidad_datos_crudos.png
-│   ├── 00_distribuciones_crudas.png
-│   ├── 01_histogramas_numericas.png
-│   ├── 02_variables_categoricas.png
-│   ├── 03_matriz_correlacion.png
-│   ├── 04_popularidad_por_genero.png
-│   └── 05_popularidad_explicit.png
-│
-├── models/
-│   └── reservado para evaluaciones futuras
-│
+│   ├── EP1_Spotify_CRISP_DM_COMPLETO.ipynb    # entrega EP1 (histórico)
+│   └── EP2_Spotify_CRISP_DM_Modelado.ipynb    # notebook completo y ejecutable (Fases 1–6)
+├── requirements.txt
 └── README.md
 ```
 
----
-
-# Ejecución del proyecto
-
-## 1. Clonar el repositorio
+# 12. Ejecución
 
 ```bash
 git clone https://github.com/ritnight/machine-learning-spotify
+cd machine-learning-spotify
+pip install -r requirements.txt
+jupyter notebook notebooks/EP2_Spotify_CRISP_DM_Modelado.ipynb
 ```
 
-Entrar a la carpeta del proyecto:
+Ejecutar con **Restart Kernel and Run All**. La ejecución completa toma ~40 minutos en 4 núcleos, sobre todo por la validación cruzada. Para una ejecución más rápida, poner `EJECUTAR_SMOTENC = False` (sección 4.3.1). En Google Colab, subir el CSV y configurar `RUTA_DATOS` en la sección 2.1.
 
-```bash
-cd Machine-Learning-Spotify
-```
+> El notebook EP2 regenera `spotify_multigenero.csv` y `particion_modelo.csv` con la nueva partición por artista + título. Si se vuelve a ejecutar el notebook EP1, esos dos archivos vuelven a su versión anterior.
 
 ---
 
-## 2. Instalar dependencias
-
-```bash
-pip install pandas numpy matplotlib seaborn scikit-learn jupyter
-```
-
----
-
-## 3. Ejecutar Jupyter Notebook
-
-```bash
-jupyter notebook
-```
-
-Luego abrir:
-
-```text
-notebooks/EP1_Spotify_CRISP_DM_COMPLETO.ipynb
-```
-
-Para reproducir correctamente el proyecto se recomienda ejecutar el notebook completo desde el inicio mediante:
-
-```text
-Restart Kernel and Run All
-```
-
----
-
-# Principales resultados de EP1
-
-- Se analizaron **114.000 registros**.
-- Se conservaron **113.842 filas**.
-- Se mantuvo el **99,86%** del dataset después de la limpieza.
-- Se eliminaron únicamente **158 filas**.
-- Se imputaron **20 nombres de álbum** como `DESCONOCIDO`.
-- Se imputaron **6 valores de compás**.
-- La moda de compás utilizada fue **4**.
-- Se utilizaron **91.072 filas para TRAIN**.
-- Se utilizaron **22.770 filas para TEST**.
-- Se obtuvo **0 solapamiento de IDs** entre TRAIN y TEST.
-- Las correlaciones individuales con popularidad son débiles.
-- Existen relaciones importantes entre algunas variables predictoras.
-- Se detectó un posible sesgo de limpieza relacionado con el género `sleep`.
-- El pipeline queda preparado para comenzar la fase de modelado.
-
----
-
-# Próximos pasos 
-
-En la siguiente etapa del proyecto se plantea:
-
-1. Entrenar modelos supervisados de regresión.
-2. Construir un modelo baseline.
-3. Comparar diferentes algoritmos.
-4. Evaluar el desempeño sobre el conjunto de prueba.
-5. Utilizar las métricas:
-   - MAE
-   - RMSE
-   - R²
-6. Comparar resultados contra el baseline.
-7. Evaluar errores según género musical.
-8. Cuantificar posibles sesgos del modelo.
-9. Seleccionar el modelo con mejor desempeño.
-10. Analizar su posible aplicación al problema de negocio.
-
----
-
-# Conclusiones
-
-1. La auditoría inicial permitió detectar y separar correctamente diferentes tipos de incidencias.
-
-2. La limpieza conservó el **99,86% de los registros**, manteniendo prácticamente todo el dataset original.
-
-3. La partición mediante `GroupShuffleSplit` por `id_cancion` evitó que una misma canción apareciera simultáneamente en TRAIN y TEST.
-
-4. El solapamiento entre identificadores de entrenamiento y prueba fue **0**.
-
-5. Ninguna característica individual de audio presenta una correlación lineal fuerte con popularidad.
-
-6. Las correlaciones débiles no descartan relaciones no lineales ni interacciones entre variables.
-
-7. Existen diferencias de popularidad entre géneros musicales.
-
-8. Se detectó un posible sesgo de limpieza, ya que aproximadamente el **88% de las eliminaciones por ceros de audio pertenecen al género `sleep`**.
-
-9. El proyecto deja construido un pipeline reproducible y preparado para comenzar el modelado en EP2.
-
-10. En esta entrega **no se entrena ni evalúa ningún modelo predictivo**.
-
----
-
-# Contexto académico
-
-**Duoc UC — 2026**  
-**Asignatura:** Machine Learning — MLY1101  
-**Evaluación Parcial N.º 1**  
-**Caso C:** Inteligencia musical y predicción de popularidad de canciones  
-
-### Integrantes
-
-- Alejandra González
-- Constanza González
-- Diego Villar
-
-### Docente
-
-**Marco Japke**
+**Duoc UC — 2026 · Machine Learning (MLY1101) · Evaluación Parcial N.º 2 · Caso C**
