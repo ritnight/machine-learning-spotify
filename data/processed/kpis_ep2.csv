@@ -1,10 +1,10 @@
 KPI,Tipo,Umbral,Valor,Cumple
 Cobertura de datos,Calidad,"≥ 0,99",0.999,✅ Sí
 Claves artista+título compartidas train/test,Calidad,0,0.0,✅ Sí
-MAE (HistGradientBoosting),Regresión,< 10,11.048,❌ No
-RMSE (HistGradientBoosting),Regresión,< 15,15.771,❌ No
-R² (HistGradientBoosting),Regresión,"> 0,20",0.41,✅ Sí
-Accuracy (Random Forest),Clasificación,"> 0,50",0.738,✅ Sí
-F1 macro (Random Forest),Clasificación,"> 0,45",0.678,✅ Sí
-"Recall ""alto"" (Random Forest)",Clasificación,"≥ 0,60",0.505,❌ No
+MAE (HistGradientBoosting),Regresión,< 10,9.238,✅ Sí
+RMSE (HistGradientBoosting),Regresión,< 15,14.205,✅ Sí
+R² (HistGradientBoosting),Regresión,"> 0,20",0.521,✅ Sí
+Accuracy (Random Forest),Clasificación,"> 0,50",0.772,✅ Sí
+F1 macro (Random Forest),Clasificación,"> 0,45",0.72,✅ Sí
+"Recall ""alto"" (Random Forest)",Clasificación,"≥ 0,60",0.613,✅ Sí
 "Silueta K-Means (k=7, prueba)",No supervisado,"≥ 0,15",0.192,✅ Sí
