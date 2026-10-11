@@ -21,16 +21,16 @@ El proyecto analiza un conjunto de datos de canciones de Spotify para estudiar s
 | Tarea | Mejor modelo | Resultado en prueba | Baseline |
 |---|---|---|---|
 | Regresión (popularidad 0–100) | HistGradientBoosting | **MAE 9,24 · RMSE 14,21 · R² 0,52** | MAE 17,17 · R² 0,00 |
-| Clasificación (bajo / medio / alto) | Random Forest + sobremuestreo (ROS) | **Accuracy 0,77 · F1 macro 0,72 · Recall "alto" 0,61 · AUC 0,91** | F1 macro 0,21 |
-| No supervisado 1 | K-Means (k = 7 perfiles sonoros) | Silueta 0,19 (prueba), estabilidad ARI 0,996 | — |
-| No supervisado 2 | DBSCAN (eps = 1,56, min_samples = 18) | 1 nicho (comedia) + 2,3% de canciones atípicas | — |
+| Clasificación (bajo / medio / alto) | HistGradientBoosting **sin balanceo** (elegido por ROC-AUC) | **ROC-AUC 0,91 · Accuracy 0,79 · F1 macro 0,71** · Recall "alto" 0,41 | AUC 0,50 · F1 macro 0,21 |
+| No supervisado (objetivo común: recuperar el macro-género desde el audio) | **K-Means (k = 10)** gana a DBSCAN | NMI vs. macro-género 0,13 (DBSCAN 0,02) · pureza 30% | — |
 
 **Hallazgos principales**
 
 - **El artista es el predictor más importante, seguido por el género.** El audio por sí solo explica ~10% de la varianza de la popularidad. Con género se llega a ~38%, y con género + artista a ~52%.
 - **El clasificador sirve para priorizar.** Entre el **1% de canciones con mayor probabilidad de "alto", el 93% es realmente popular** (8 veces la tasa base de 11%).
-- **Todos los KPIs se cumplen.** Matiz: para artistas nuevos (28% de la prueba) el MAE es 11,3, mientras que para artistas conocidos es 8,4.
-- **K-Means** segmenta el catálogo en 7 perfiles interpretables. **DBSCAN** muestra que el audio es un continuo sin grupos separados: solo aísla un nicho de contenido hablado y un 2–3% de canciones atípicas.
+- **Con ROC-AUC como criterio, "sin balanceo" gana en los 4 clasificadores.** El balanceo cambia el umbral de decisión, no la capacidad de ordenar. Por eso el ganador tiene un AUC excelente, pero recall de "alto" bajo con el umbral por defecto (0,41 < 0,60).
+- **Se cumplen 9 de 10 KPIs.** Falla el recall de "alto", que se puede corregir ajustando el umbral de decisión. Además, para artistas nuevos (28% de la prueba) el MAE es 11,3.
+- **K-Means y DBSCAN** se compararon con el mismo objetivo (recuperar el macro-género desde el audio). **K-Means gana**, pero ninguno recupera bien los géneros. El PCA 3D confirma que el audio es un continuo sin "islas" por género.
 
 ---
 
@@ -56,9 +56,8 @@ La popularidad es una variable de **0 a 100** calculada por Spotify. Se aborda d
 1. Asegurar una base de datos limpia, auditable y **sin fuga de información** (EP1, revisada en EP2).
 2. Entrenar y comparar **4 modelos de regresión** contra un baseline.
 3. Entrenar y comparar **4 modelos de clasificación**, evaluando **distintos métodos de balanceo**.
-4. Segmentar el catálogo en **perfiles sonoros** (K-Means).
-5. Detectar **nichos densos y canciones atípicas** (DBSCAN).
-6. Cuantificar sesgos del modelo (error por género) y traducir los resultados en recomendaciones.
+4. Agrupar las canciones por su sonido con **K-Means y DBSCAN** (mismo objetivo y misma evaluación) y comprobar cuál recupera mejor los **macro-géneros**.
+5. Cuantificar sesgos del modelo (error por género) y traducir los resultados en recomendaciones.
 
 # 3. KPIs
 
@@ -71,10 +70,13 @@ Todos los umbrales se fijaron **antes** de evaluar sobre el conjunto de prueba.
 | MAE (HistGradientBoosting) | Regresión | < 10 | 9,24 | ✅ |
 | RMSE (HistGradientBoosting) | Regresión | < 15 | 14,21 | ✅ |
 | R² (HistGradientBoosting) | Regresión | > 0,20 | 0,521 | ✅ |
-| Accuracy (Random Forest) | Clasificación | > 0,50 | 0,772 | ✅ |
-| F1 macro (Random Forest) | Clasificación | > 0,45 | 0,720 | ✅ |
-| Recall clase "alto" (Random Forest) | Clasificación | ≥ 0,60 | 0,613 | ✅ |
-| Silueta K-Means (prueba) | No supervisado | ≥ 0,15 | 0,192 | ✅ |
+| **ROC-AUC macro (HistGradientBoosting)** | Clasificación | ≥ 0,80 | 0,910 | ✅ |
+| Accuracy (HistGradientBoosting) | Clasificación | > 0,50 | 0,790 | ✅ |
+| F1 macro (HistGradientBoosting) | Clasificación | > 0,45 | 0,713 | ✅ |
+| Recall clase "alto" (HistGradientBoosting) | Clasificación | ≥ 0,60 | 0,409 | ❌ |
+| Silueta K-Means (k = 10, prueba) | No supervisado | ≥ 0,15 | 0,164 | ✅ |
+
+**Por qué falla el recall de "alto":** el ganador se elige por ROC-AUC (recomendación docente) y resulta ser un modelo **sin balanceo**, que aplica el umbral por defecto. Con el criterio anterior (F1 macro), Random Forest + ROS cumplía (0,61). La curva ROC muestra que existe un umbral con recall ≈ 0,60 y una tasa de falsos positivos de ~0,10–0,12. La solución recomendada es **calibrar el umbral de la clase "alto"** en validación cruzada.
 
 En la versión sin artista no se cumplían el MAE (11,05), el RMSE (15,77) ni el recall de "alto" (0,51). Esos resultados se conservan en `data/processed/*_sin_artista.csv`.
 
@@ -120,12 +122,15 @@ En la versión sin artista no se cumplían el MAE (11,05), el RMSE (15,77) ni el
 | 6 | Ruta del CSV relativa fija (fallaba fuera de `notebooks/`). | Búsqueda automática de la ruta. |
 | 7 | Celdas vacías, desordenadas o con referencias erróneas. | Completadas y reordenadas. |
 
-## 5.2 Decisiones de diseño del equipo (versión 2)
+## 5.2 Decisiones de diseño del equipo (versiones 2 y 3)
 
 | Decisión | Implementación |
 |---|---|
 | **Incluir el artista** en el pipeline, por su influencia en la popularidad | *Target encoding* suavizado con *cross-fitting*; en colaboraciones se usa el máximo entre artistas. Se compara siempre con el modelo sin artista. |
 | **K-Means y DBSCAN** como modelos no supervisados (requisito de la asignatura) | DBSCAN reemplaza al clustering jerárquico de la versión anterior. |
+| **Árbol de decisión en lugar de Ridge** (v3): los 4 regresores son no lineales | `DecisionTreeRegressor`. |
+| **Mismo objetivo para K-Means y DBSCAN** (v3) | Ambos agrupan por audio y se evalúan contra 10 **macro-géneros**, con las mismas métricas y PCA 3D. |
+| **ROC-AUC como métrica principal** de clasificación (v3, recomendación docente) | Selección del balanceo, de los hiperparámetros y del ganador por AUC; curvas ROC. |
 
 Las **reglas de limpieza de la EP1 se mantienen**: 158 filas eliminadas (99,86% conservado), 20 álbumes imputados y la moda de compás. Su justificación está en el notebook (sección 3.1).
 
@@ -187,17 +192,21 @@ El artista tiene **31.388 valores** y el 64% aparece con una sola canción, así
 
 **Validación:** `GroupKFold` de 3 pliegues por artista + título, solo con los datos de entrenamiento. Los hiperparámetros se ajustan con `RandomizedSearchCV`. El preprocesamiento y el balanceo van dentro del pipeline, y el conjunto de prueba se usa **una sola vez**.
 
-## 7.1 Regresión: 4 modelos
+## 7.1 Regresión: 4 modelos (todos no lineales)
 
-| Modelo | Por qué se incluye | Mejores hiperparámetros | MAE CV | R² CV |
+| Modelo | Cómo funciona / por qué se incluye | Mejores hiperparámetros | MAE CV | R² CV |
 |---|---|---|---:|---:|
 | Baseline (media) | Referencia mínima | — | 17,27 | 0,00 |
-| **Ridge** | Lineal, interpretable; la L2 controla la multicolinealidad | `alpha=10` | 10,62 | 0,460 |
-| **KNN** | Hipótesis "canciones similares → popularidad similar" | `k=10`, `weights=distance` | 11,08 | 0,397 |
-| **Random Forest** | *Bagging*: no linealidad, interacciones, robusto a outliers | `max_features=0.33`, `min_samples_leaf=5` | 9,68 | 0,497 |
-| **HistGradientBoosting** | *Boosting*: estado del arte en datos tabulares, eficiente | `lr=0.03`, `max_iter=600`, `max_leaf_nodes=63` | **9,42** | **0,502** |
+| **Árbol de decisión** | Preguntas sucesivas ("¿popularidad del artista > x?", "¿género = pop?"); predice la media de cada hoja. Muy interpretable; tiene alta varianza. | `max_depth=14`, `min_samples_leaf=10` | 10,42 | 0,418 |
+| **KNN** | Promedia la popularidad de las 10 canciones más parecidas | `k=10`, `weights=distance` | 11,08 | 0,397 |
+| **Random Forest** | *Bagging*: promedia 150 árboles entrenados con muestras distintas | `max_features=0.33`, `min_samples_leaf=5` | 9,68 | 0,497 |
+| **HistGradientBoosting** | *Boosting*: árboles en secuencia que corrigen errores | `lr=0.03`, `max_iter=600`, `max_leaf_nodes=63` | **9,42** | **0,502** |
 
-![Comparación regresión](images/07_comparacion_regresion_cv.png)
+Random Forest reduce el error del árbol individual en ~7%, y el boosting lo reduce aún más. Los primeros cortes del árbol usan la popularidad del artista y el género.
+
+| | |
+|---|---|
+| ![Comparación regresión](images/07_comparacion_regresion_cv.png) | ![Árbol de decisión](images/07b_arbol_decision.png) |
 
 **Aporte del artista** (HistGradientBoosting, CV):
 
@@ -208,91 +217,130 @@ El artista tiene **31.388 valores** y el 64% aparece con una sola canción, así
 | + artista (sin género) | 10,81 | 0,421 |
 | **+ género + artista** | **9,69** | **0,497** |
 
-El artista es la variable más informativa por sí sola, y combinado con el género da el mejor resultado.
+## 7.2 Clasificación: 4 modelos × 5 técnicas de balanceo
 
-## 7.2 Clasificación: 4 modelos y comparación de métodos de balanceo
+**Métrica principal: ROC-AUC macro (one-vs-rest)**, por recomendación docente:
+- mide la capacidad de **ordenar** las canciones por probabilidad;
+- no depende del umbral de decisión ni del desbalance de clases.
 
-Se probaron **5 métodos de balanceo × 4 modelos**. El remuestreo se aplicó solo a los pliegues de entrenamiento y después del preprocesamiento.
+Desempate y métricas complementarias: F1 macro y recall de "alto".
 
-| Método | F1 macro promedio | Recall "alto" promedio | Comentario |
-|---|---:|---:|---|
-| Sin balanceo | 0,677 | 0,336 | Alta accuracy, pero detecta poco la clase "alto" |
-| `class_weight='balanced'` | **0,693** | 0,725 | Mejor promedio; no agranda los datos (no aplica a KNN) |
-| Submuestreo (RUS) | 0,666 | **0,739** | Descarta ~70% de los datos |
-| Sobremuestreo (ROS) | 0,678 | 0,696 | Mejor F1 en Random Forest |
-| SMOTE | 0,670 | 0,684 | Mejor F1 en HistGradientBoosting |
+**Todas las pruebas de balanceo (CV, GroupKFold 3).** El remuestreo se aplica solo en los pliegues de entrenamiento:
 
-SMOTENC se evaluó en la versión sin artista: no superó a SMOTE y tardó ~16 veces más. Con el artista como categórica de 31.000 valores sería inviable.
+| Modelo | Técnica | ROC-AUC | F1 macro | Recall "alto" | Accuracy |
+|---|---|---:|---:|---:|---:|
+| Regresión logística | **Sin balanceo ✅** | **0,891** | 0,672 | 0,319 | 0,768 |
+| Regresión logística | class_weight | 0,884 | 0,662 | 0,757 | 0,708 |
+| Regresión logística | RUS | 0,882 | 0,663 | 0,757 | 0,709 |
+| Regresión logística | ROS | 0,884 | 0,661 | 0,758 | 0,708 |
+| Regresión logística | SMOTE | 0,884 | 0,664 | 0,744 | 0,711 |
+| KNN | **Sin balanceo ✅** | **0,859** | 0,630 | 0,250 | 0,734 |
+| KNN | RUS | 0,842 | 0,624 | 0,687 | 0,669 |
+| KNN | ROS | 0,845 | 0,625 | 0,683 | 0,673 |
+| KNN | SMOTE | 0,840 | 0,586 | 0,800 | 0,621 |
+| Random Forest | **Sin balanceo ✅** | **0,906** | 0,697 | 0,358 | 0,785 |
+| Random Forest | class_weight | 0,903 | 0,713 | 0,683 | 0,762 |
+| Random Forest | RUS | 0,893 | 0,689 | 0,755 | 0,734 |
+| Random Forest | ROS | 0,904 | 0,719 | 0,623 | 0,772 |
+| Random Forest | SMOTE | 0,903 | 0,715 | 0,631 | 0,768 |
+| HistGradientBoosting | **Sin balanceo ✅** | **0,909** | 0,710 | 0,419 | 0,786 |
+| HistGradientBoosting | class_weight | 0,905 | 0,704 | 0,735 | 0,752 |
+| HistGradientBoosting | RUS | 0,896 | 0,690 | 0,758 | 0,736 |
+| HistGradientBoosting | ROS | 0,905 | 0,704 | 0,722 | 0,753 |
+| HistGradientBoosting | SMOTE | 0,907 | 0,716 | 0,563 | 0,775 |
+
+✅ = mejor técnica para ese modelo (mayor AUC). `class_weight` no aplica a KNN.
+
+**Lectura:**
+- En los 4 modelos, **"sin balanceo" tiene el mayor AUC**. El balanceo mueve el umbral de decisión, pero no mejora la capacidad de ordenar.
+- **RUS** pierde datos y **ROS/SMOTE** distorsionan las probabilidades.
+- Lo que el balanceo sí logra es subir el recall de "alto" de ~0,3–0,4 a ~0,7–0,8, a costa de precisión.
+- `class_weight` es el mejor compromiso en promedio: AUC 0,897 y F1 0,693.
 
 ![Balanceo](images/08_comparacion_balanceo.png)
 
-Cada modelo se ajustó con su mejor método (criterio: F1 macro en CV):
+**Ajuste de hiperparámetros** (con la mejor técnica de cada modelo, maximizando AUC):
 
-| Modelo | Balanceo | Mejores hiperparámetros | F1 macro CV | Recall "alto" CV |
-|---|---|---|---:|---:|
-| Baseline (clase mayoritaria) | — | — | 0,208 | 0,000 |
-| **Regresión logística** | Sin balanceo | `C=10` | 0,672 | 0,319 |
-| **KNN** | Sin balanceo | `k=15`, `weights=uniform` | 0,637 | 0,282 |
-| **Random Forest** | ROS | `max_features=sqrt`, `min_samples_leaf=3` | **0,719** | **0,623** |
-| **HistGradientBoosting** | SMOTE | `lr=0.03`, `max_iter=600`, `max_leaf_nodes=63` | **0,719** | 0,536 |
+| Modelo | Técnica | Mejores hiperparámetros | ROC-AUC CV | F1 macro CV | Recall "alto" CV |
+|---|---|---|---:|---:|---:|
+| Baseline | — | — | 0,500 | 0,208 | 0,000 |
+| Regresión logística | Sin balanceo | `C=10` | 0,891 | 0,673 | 0,319 |
+| KNN | Sin balanceo | `k=60`, `weights=distance` | 0,865 | 0,618 | 0,210 |
+| Random Forest | Sin balanceo | `max_features=sqrt`, `min_samples_leaf=3` | 0,906 | 0,697 | 0,358 |
+| **HistGradientBoosting** | **Sin balanceo** | `lr=0.03`, `max_iter=300`, `max_leaf_nodes=63` | **0,909** | **0,710** | **0,423** |
 
-Random Forest y HistGradientBoosting empatan en F1 macro. Se elige **Random Forest** por su mayor recall de "alto" en CV, que es el criterio de negocio.
+> **🏆 Modelo ganador: HistGradientBoosting + sin balanceo** (ROC-AUC CV 0,909).
 
-## 7.3 No supervisado 1 — K-Means: perfiles sonoros
+## 7.3 No supervisado — objetivo común de K-Means y DBSCAN
 
-- **Objetivo:** segmentar las canciones por **sonido** para crear playlists por contexto, identificar los perfiles con más tracción y contrastar el sonido con las etiquetas de género.
-- **Variables:** las 9 de audio, estandarizadas (sin popularidad ni género).
-- **Elección de k:** codo + silueta, dentro de un rango de negocio de 4 a 8 perfiles → **k = 7**.
+**Objetivo común:** agrupar las canciones usando **solo cómo suenan** y comprobar si esos grupos recuperan las **familias musicales (macro-géneros)**. Las condiciones son las mismas para los dos algoritmos:
+- **Variables:** las 9 de audio, estandarizadas.
+- **Muestra:** las mismas 20.000 canciones de entrenamiento, más 5.000 de prueba para comprobar la generalización.
+- **Métricas:** NMI, ARI, homogeneidad, completitud, pureza, silueta y Davies-Bouldin.
+- **Criterio del ganador:** mayor NMI frente al macro-género.
 
-| Perfil | Rasgos | % catálogo | Pop. media | % "alto" |
-|---|---|---:|---:|---:|
-| Bailables y alegres | bailabilidad 0,71, positividad 0,70 | 30,8% | 34,4 | **14,6%** |
-| Intensas y ruidosas | energía 0,82, −5,4 dB, 140 BPM | 22,6% | 35,4 | 12,6% |
-| Acústicas melódicas | acusticidad 0,69 | 20,2% | 33,4 | 10,9% |
-| Electrónica instrumental | instrumentalidad 0,80, energía 0,74 | 11,3% | 27,4 | 3,6% |
-| Ambientales / clásicas | acusticidad 0,87, −21 dB | 7,1% | 28,4 | 6,6% |
-| En vivo | presencia en vivo 0,75 | 6,9% | 35,4 | 6,5% |
-| Habladas | presencia de habla 0,84 | 1,2% | 24,5 | 1,3% |
+**Referencia — 10 macro-géneros** (asignación manual de los 114 géneros; `data/processed/macrogeneros.csv`): Rock/Alternativo, Metal/Extremo, Electrónica/Dance, Pop, Hip-hop/R&B/Soul, Latino/Caribe, Brasileña, Folk/Country/Acústico, Clásica/Ambiental/Jazz e Infantil/Mundo/Otros.
 
-La silueta es 0,198 en entrenamiento y 0,192 en prueba (los perfiles generalizan), y el ARI entre semillas es 0,996 (la solución es estable).
+### K-Means: cómo agrupa
 
-| | |
-|---|---|
-| ![Centroides](images/10_kmeans_centroides.png) | ![PCA y popularidad](images/11_kmeans_pca_popularidad.png) |
+K-Means minimiza la distancia de cada canción al **centroide** de su grupo:
+1. Elige k centroides iniciales (`k-means++`).
+2. Asigna cada canción al centroide más cercano.
+3. Recalcula cada centroide como el promedio de su grupo.
+4. Repite los pasos 2 y 3 hasta que no hay cambios.
 
-## 7.4 No supervisado 2 — DBSCAN: nichos densos y canciones atípicas
+Se ejecuta 10 veces y se queda con la mejor solución. Toda canción queda en un grupo. **k = 10**, igual al número de macro-géneros (el codo y la silueta se muestran como referencia).
 
-- **Objetivo:** detectar grupos "naturales" de canciones muy parecidas (nichos) y canciones que no se parecen a ninguna (atípicas). Las atípicas sirven para revisar metadatos, hacer curaduría especial y tomar con cautela las predicciones de los modelos.
-- **Variables:** las mismas 9 de audio que K-Means, sobre una muestra de 20.000 canciones de entrenamiento.
-- **Parámetros:** `min_samples = 18` (2 × número de variables) y **`eps = 1,56`**, elegido por el codo de la curva de k-distancias.
+| Cluster | Perfil sonoro | Macro-género dominante | % "alto" |
+|---|---|---|---:|
+| 0 | Acústicas melancólicas | Infantil/Mundo (24%), Folk (19%) | 10,2% |
+| 1 | Intensas y oscuras | Electrónica (23%), Metal (18%), Rock (17%) | **15,7%** |
+| 2 | Ambientales / clásicas | **Clásica/Ambiental (58%)** | 6,8% |
+| 3 | Rápidas e intensas | Electrónica (22%), Rock (21%) | 11,9% |
+| 4 | Rítmicas con voz hablada | Electrónica (29%), Mundo (24%) | 12,1% |
+| 5 | En vivo | **Brasileña (29%)** | 6,2% |
+| 6 | Bailables y alegres | Electrónica (26%), Latino (17%) | 14,8% |
+| 7 | Electrónica instrumental | **Electrónica (58%)** | 3,4% |
+| 8 | Acústicas alegres | Folk (17%), Mundo (17%), Pop (15%) | 10,1% |
+| 9 | Habladas (comedia) | **Infantil/Mundo/Otros (94%)** | 0,5% |
 
-| Grupo | % muestra | Pop. media | % "alto" | Rasgos |
-|---|---:|---:|---:|---|
-| Catálogo principal | 96,9% | 33,4 | 11,0% | Perfil medio |
-| **Nicho de comedia / *stand-up*** | 0,7% | 22,8 | 0,0% | Habla +7,3 DE, en vivo +2,9 DE |
-| **Atípicas (ruido)** | 2,3% | 27,5 | 3,5% | sleep, study, new-age, iranian, idm |
+![K-Means vs macro-género](images/10_kmeans_perfiles_vs_macrogenero.png)
 
-**Sensibilidad a `eps`:**
-- Con `eps = 1,0` aparece además un nicho **ambiental/clásico**, pero el ruido sube al 24%.
-- Con `eps = 0,8` el ruido llega al 47%.
+**PCA 3D:** las 3 primeras componentes explican el **62%** de la varianza:
+- **PC1 = intensidad** (energía y volumen frente a acusticidad);
+- **PC2 = baile y ánimo** (bailabilidad y positividad);
+- **PC3 = voz hablada / en vivo**.
 
-**Conclusión:** el espacio de audio es un **continuo denso**, sin grupos separados por zonas vacías. En prueba, el % de atípicas es similar (2,6%), así que la detección generaliza.
+Coloreada por macro-género, la nube está **mezclada**: no hay "islas" por género, salvo la zona del contenido hablado y la cola de la música clásica/ambiental. K-Means corta esa nube continua en regiones.
 
-**K-Means vs. DBSCAN:**
+![PCA 3D](images/11_pca_3d_kmeans_macrogenero.png)
 
-| | K-Means | DBSCAN |
+## 7.4 DBSCAN y comparación con K-Means
+
+**DBSCAN agrupa por densidad.** Una canción con al menos `min_samples` = 18 vecinas a menos de `eps` es un "núcleo". Los núcleos cercanos forman un cluster, y las canciones aisladas quedan como **ruido**. `eps` = 1,56 se toma del codo de la curva de k-distancias.
+
+**Resultado:** 2 clusters (catálogo principal 97% y nicho de comedia 0,7%) + 2,3% de canciones atípicas.
+- Ningún `eps` probado (0,6–2,0) supera un NMI de 0,06.
+- Con `eps` bajo, entre el 47% y el 88% de las canciones queda como ruido.
+
+| Métrica (misma muestra) | K-Means (k = 10) | DBSCAN (eps = 1,56) |
 |---|---:|---:|
-| Grupos | 7 | 2 + ruido |
-| Fija k de antemano | Sí | No (eps, min_samples) |
-| % ruido | 0% | 2,3% |
-| Silueta | 0,20 | 0,57 (99% en un grupo) |
-| NMI frente al género | 0,18 | 0,02 |
+| **NMI vs. macro-género** (criterio) | **0,132** | 0,019 |
+| ARI vs. macro-género | **0,064** | 0,000 |
+| Homogeneidad | **0,131** | 0,010 |
+| Completitud | 0,133 | 0,148 |
+| Pureza | **0,303** | 0,225 |
+| NMI en prueba | **0,135** | 0,023 |
+| Silueta | 0,170 | 0,571* |
+| Grupos / % ruido | 10 / 0% | 2 / 2,3% |
 
-El ARI entre ambos es 0,008: responden preguntas distintas y se complementan. K-Means **segmenta** el continuo en perfiles útiles; DBSCAN **detecta lo inusual**.
+\*La silueta de DBSCAN engaña: el 99% de las canciones cae en un solo grupo.
+
+> **🏆 Ganador: K-Means.** Recupera ~7 veces más información del macro-género que DBSCAN. Ninguno recupera bien los géneros, porque el audio es un continuo y gran parte de la identidad de género es cultural. DBSCAN queda como herramienta complementaria para detectar canciones atípicas.
 
 | | |
 |---|---|
-| ![k-distancias](images/12_dbscan_k_distancias.png) | ![DBSCAN](images/13_dbscan_resultados.png) |
+| ![DBSCAN](images/13_dbscan_resultados.png) | ![Comparación](images/13b_comparacion_kmeans_dbscan.png) |
 
 # 8. Evaluación (conjunto de prueba)
 
@@ -301,35 +349,39 @@ El ARI entre ambos es 0,008: responden preguntas distintas y se complementan. K-
 | Modelo | MAE | RMSE | R² | Mejora MAE vs baseline |
 |---|---:|---:|---:|---:|
 | Baseline | 17,17 | 20,53 | 0,000 | — |
-| Ridge | 10,55 | 15,06 | 0,462 | 38,5% |
+| Árbol de decisión | 10,20 | 15,31 | 0,444 | 40,6% |
 | KNN | 10,73 | 15,72 | 0,413 | 37,5% |
 | Random Forest | 9,49 | 14,41 | 0,507 | 44,7% |
 | **HistGradientBoosting** | **9,24** | **14,21** | **0,521** | **46,2%** |
 
-Las métricas de prueba coinciden con las de CV, así que no hay sobreajuste ni fuga por el *target encoding*. El modelo todavía se contrae hacia la media:
+Las métricas de prueba coinciden con las de CV, así que no hay sobreajuste ni fuga. El modelo todavía se contrae hacia la media:
 - las canciones con popularidad 0 se sobreestiman en ~20 puntos;
-- los éxitos (61–80) se subestiman en ~18 puntos;
-- en el rango 21–40 el MAE es de 5,3 puntos.
+- los éxitos (61–80) se subestiman en ~18 puntos.
 
 ![Regresión test](images/14_regresion_test.png)
 
 ## 8.2 Clasificación
 
-| Modelo | Accuracy | F1 macro | Recall "alto" | Precisión "alto" | ROC-AUC |
-|---|---:|---:|---:|---:|---:|
-| Baseline | 0,449 | 0,206 | 0,000 | 0,000 | 0,500 |
-| Regresión logística | 0,767 | 0,670 | 0,303 | **0,641** | 0,889 |
-| KNN | 0,736 | 0,644 | 0,294 | 0,621 | 0,856 |
-| **Random Forest + ROS** | 0,772 | 0,720 | **0,613** | 0,505 | 0,905 |
-| HistGradientBoosting + SMOTE | **0,786** | **0,726** | 0,538 | 0,558 | **0,911** |
+| Modelo (sin balanceo) | ROC-AUC macro | AUC "alto" vs. resto | Accuracy | F1 macro | Recall "alto" | Precisión "alto" |
+|---|---:|---:|---:|---:|---:|---:|
+| Baseline | 0,500 | — | 0,449 | 0,206 | 0,000 | 0,000 |
+| Regresión logística | 0,889 | 0,881 | 0,767 | 0,670 | 0,303 | 0,641 |
+| KNN | 0,869 | 0,863 | 0,740 | 0,629 | 0,225 | 0,699 |
+| Random Forest | 0,906 | 0,898 | 0,786 | 0,701 | 0,370 | 0,647 |
+| **HistGradientBoosting** | **0,910** | **0,903** | **0,790** | **0,713** | **0,409** | 0,648 |
 
-- Con el modelo elegido (Random Forest), "bajo" y "medio" se reconocen bien (F1 0,83 y 0,78) y "alto" llega a F1 0,55.
-- **Lista corta:** ordenando por probabilidad de "alto":
-  - **el top 1% tiene 93% de aciertos**;
-  - el top 2%, 88%;
-  - el top 5%, 70% (tasa base: 11%).
+**Curvas ROC one-vs-rest del ganador:**
+- "bajo": AUC 0,927, la clase más fácil;
+- "alto": AUC 0,903;
+- "medio": AUC 0,900, la más difícil.
 
-![Clasificación test](images/15_clasificacion_test.png)
+**Con el umbral por defecto el modelo es conservador:** cuando predice "alto" acierta el 65% de las veces, pero detecta solo el 41% de los éxitos.
+
+**Lista corta:** el **top 1% por probabilidad de "alto" tiene 93% de aciertos**, el top 5% un 71% y el top 10% un 58% (tasa base: 11%).
+
+| | |
+|---|---|
+| ![Curvas ROC](images/15b_curvas_roc.png) | ![Clasificación test](images/15_clasificacion_test.png) |
 
 ## 8.3 Importancia de variables, sesgo y artistas nuevos
 
@@ -356,10 +408,10 @@ La ganancia del artista se concentra en artistas con historial. Esto genera un r
 
 ## 8.4 Recomendaciones para el negocio
 
-1. **Usar el clasificador como filtro de priorización** para curadores: revisar primero el top 1–5% por probabilidad de "alto". **Siempre con revisión humana.**
+1. **Usar el clasificador para rankear** lanzamientos: revisar primero el top 1–5% por probabilidad de "alto". **Siempre con revisión humana.** Si se necesita etiquetar "alto" con recall ≥ 0,60, **bajar el umbral de decisión** (calibrado en CV) o usar `class_weight`.
 2. **Para artistas nuevos**, consultar también el modelo sin artista, de modo que no se penalice a quien no tiene historial.
 3. **Usar el regresor** para estimar el nivel general de una canción, no para identificar éxitos puntuales.
-4. **Usar los perfiles K-Means** para playlists por contexto (fiesta, foco, relajación) y las **atípicas de DBSCAN** para revisión de metadatos y curaduría de nicho.
+4. **Usar los 10 perfiles K-Means** para playlists por contexto (fiesta, foco, relajación) y las **atípicas de DBSCAN** para revisión de metadatos. No usar el audio para reetiquetar géneros: el acuerdo es bajo.
 5. **Para mejorar los modelos:**
    - incorporar la fecha de lanzamiento y la exposición en playlists;
    - deduplicar las reediciones en la fuente.
@@ -371,8 +423,8 @@ La ganancia del artista se concentra en artistas con historial. Esto genera un r
 | Archivo | Contenido |
 |---|---|
 | `regresor_popularidad.joblib` | HistGradientBoosting (regresión) |
-| `clasificador_popularidad.joblib` | Random Forest + ROS (clasificación) |
-| `kmeans_perfiles_sonoros.joblib` | `StandardScaler` + K-Means (k = 7) |
+| `clasificador_popularidad.joblib` | HistGradientBoosting sin balanceo (clasificación) |
+| `kmeans_perfiles_sonoros.joblib` | `StandardScaler` + K-Means (k = 10) |
 
 Los pipelines usan el transformador propio `src/transformadores.py`. Por eso hay que cargarlos desde la raíz del repositorio, o con `src/` en el `PYTHONPATH`:
 
@@ -410,6 +462,8 @@ machine-learning-spotify/
 │       ├── resultados_cv_regresion.csv, resultados_test_regresion.csv
 │       ├── resultados_balanceo.csv, resultados_cv_clasificacion.csv, resultados_test_clasificacion.csv
 │       ├── ablacion_artista.csv, desempeno_artista_conocido_nuevo.csv
+│       ├── balanceo_por_modelo_explicito.csv              # 19 pruebas de balanceo
+│       ├── macrogeneros.csv, kmeans_perfiles.csv
 │       ├── dbscan_sensibilidad_eps.csv, comparacion_kmeans_dbscan.csv
 │       ├── importancia_permutacion.csv, errores_por_genero.csv, kpis_ep2.csv
 │       └── *_sin_artista.csv                              # resultados de la versión sin artista

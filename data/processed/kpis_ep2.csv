@@ -4,7 +4,8 @@ Claves artista+título compartidas train/test,Calidad,0,0.0,✅ Sí
 MAE (HistGradientBoosting),Regresión,< 10,9.238,✅ Sí
 RMSE (HistGradientBoosting),Regresión,< 15,14.205,✅ Sí
 R² (HistGradientBoosting),Regresión,"> 0,20",0.521,✅ Sí
-Accuracy (Random Forest),Clasificación,"> 0,50",0.772,✅ Sí
-F1 macro (Random Forest),Clasificación,"> 0,45",0.72,✅ Sí
-"Recall ""alto"" (Random Forest)",Clasificación,"≥ 0,60",0.613,✅ Sí
-"Silueta K-Means (k=7, prueba)",No supervisado,"≥ 0,15",0.192,✅ Sí
+Accuracy (HistGradientBoosting),Clasificación,"> 0,50",0.79,✅ Sí
+F1 macro (HistGradientBoosting),Clasificación,"> 0,45",0.713,✅ Sí
+"Recall ""alto"" (HistGradientBoosting)",Clasificación,"≥ 0,60",0.409,❌ No
+ROC-AUC macro (HistGradientBoosting),Clasificación,"≥ 0,80",0.91,✅ Sí
+"Silueta K-Means (k=10, prueba)",No supervisado,"≥ 0,15",0.164,✅ Sí
