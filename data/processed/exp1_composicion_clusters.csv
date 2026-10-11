@@ -1,0 +1,10 @@
+,perfil_sonoro,canciones,generos_sobrerrepresentados (lift ≥ 2)
+0,+Acusticidad / −Energía,12655,"romance (4.5), tango (4.3), honky-tonk (4.2), jazz (4.0), cantopop (3.6), show-tunes (3.3), singer-songwriter (3.3), songwriter (3.3)"
+1,−Volumen (dB) / +Instrumentalidad,5028,"new-age (11.0), sleep (10.5), classical (10.4), ambient (9.3), piano (7.7), guitar (6.3), iranian (6.2), disney (5.9)"
+2,+Presencia de habla / +Presencia en vivo,738,comedy (77.3)
+3,+Presencia de habla / +Bailabilidad,3967,"j-dance (8.8), dancehall (6.7), kids (4.9), funk (4.8), hardcore (3.8), french (3.8), hip-hop (3.4), sad (3.3)"
+4,+Tempo (BPM) / +Energía,9426,"hardstyle (4.5), happy (3.6), j-idol (3.2), drum-and-bass (3.1), metalcore (3.1), dubstep (2.9), power-pop (2.8), grunge (2.8)"
+5,−Acusticidad / −Positividad musical,11280,"metalcore (3.0), death-metal (2.8), progressive-house (2.8), metal (2.8), heavy-metal (2.8), edm (2.7), grunge (2.6), house (2.5)"
+6,+Presencia en vivo / +Energía,4660,"pagode (7.6), sertanejo (6.3), samba (6.1), mpb (4.3), gospel (3.3), brazil (3.0), forro (2.9), world-music (2.4)"
+7,+Positividad musical / +Bailabilidad,16202,"salsa (3.3), disco (2.8), reggaeton (2.8), reggae (2.8), forro (2.7), latino (2.6), latin (2.6), party (2.4)"
+8,+Instrumentalidad / −Acusticidad,7784,"minimal-techno (7.9), detroit-techno (6.9), techno (5.8), study (5.2), grindcore (4.9), chicago-house (4.7), idm (4.5), trance (4.3)"

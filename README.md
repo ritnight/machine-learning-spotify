@@ -21,15 +21,15 @@ El proyecto analiza un conjunto de datos de canciones de Spotify para estudiar s
 | Tarea | Mejor modelo | Resultado en prueba | Baseline |
 |---|---|---|---|
 | Regresión (popularidad 0–100) | HistGradientBoosting | **MAE 9,24 · RMSE 14,21 · R² 0,52** | MAE 17,17 · R² 0,00 |
-| Clasificación (bajo / medio / alto) | HistGradientBoosting **sin balanceo** (elegido por ROC-AUC) | **ROC-AUC 0,91 · Accuracy 0,79 · F1 macro 0,71** · Recall "alto" 0,41 | AUC 0,50 · F1 macro 0,21 |
-| No supervisado (objetivo común: recuperar el macro-género desde el audio) | **K-Means (k = 10)** gana a DBSCAN | NMI vs. macro-género 0,13 (DBSCAN 0,02) · pureza 30% | — |
+| Clasificación (bajo / medio / alto) | HistGradientBoosting **sin balanceo** (elegido por ROC-AUC) + **umbral calibrado u = 0,28** | **ROC-AUC 0,91 · F1 macro 0,72 · Recall "alto" 0,61** · Accuracy 0,77 | AUC 0,50 · F1 macro 0,21 |
+| Clustering: 3 experimentos (géneros, artistas, versiones) | **K-Means (k = 9)** gana a DBSCAN en los tres | Propuesta recomendada: **Exp. 1, similitudes sonoras entre géneros** (asociación con géneros ~40× el azar, replicada en prueba) | — |
 
 **Hallazgos principales**
 
 - **El artista es el predictor más importante, seguido por el género.** El audio por sí solo explica ~10% de la varianza de la popularidad. Con género se llega a ~38%, y con género + artista a ~52%.
 - **El clasificador sirve para priorizar.** Entre el **1% de canciones con mayor probabilidad de "alto", el 93% es realmente popular** (8 veces la tasa base de 11%).
 - **Con ROC-AUC como criterio, "sin balanceo" gana en los 4 clasificadores.** El balanceo cambia el umbral de decisión, no la capacidad de ordenar. Por eso el ganador tiene un AUC excelente, pero recall de "alto" bajo con el umbral por defecto (0,41 < 0,60).
-- **Se cumplen 9 de 10 KPIs.** Falla el recall de "alto", que se puede corregir ajustando el umbral de decisión. Además, para artistas nuevos (28% de la prueba) el MAE es 11,3.
+- **Con el umbral calibrado se cumplen todos los KPIs.** El recall de "alto" pasa de 0,41 a 0,61 sin cambiar el modelo, y el ROC-AUC sigue en 0,91. Para artistas nuevos (28% de la prueba), el MAE es 11,3.
 - **K-Means y DBSCAN** se compararon con el mismo objetivo (recuperar el macro-género desde el audio). **K-Means gana**, pero ninguno recupera bien los géneros. El PCA 3D confirma que el audio es un continuo sin "islas" por género.
 
 ---
@@ -73,10 +73,18 @@ Todos los umbrales se fijaron **antes** de evaluar sobre el conjunto de prueba.
 | **ROC-AUC macro (HistGradientBoosting)** | Clasificación | ≥ 0,80 | 0,910 | ✅ |
 | Accuracy (HistGradientBoosting) | Clasificación | > 0,50 | 0,790 | ✅ |
 | F1 macro (HistGradientBoosting) | Clasificación | > 0,45 | 0,713 | ✅ |
-| Recall clase "alto" (HistGradientBoosting) | Clasificación | ≥ 0,60 | 0,409 | ❌ |
+| Recall clase "alto", regla por defecto | Clasificación | ≥ 0,60 | 0,409 | ❌ |
+| **Recall clase "alto", umbral calibrado u = 0,28** | Clasificación | ≥ 0,60 | **0,608** | ✅ |
 | Silueta K-Means (k = 10, prueba) | No supervisado | ≥ 0,15 | 0,164 | ✅ |
 
-**Por qué falla el recall de "alto":** el ganador se elige por ROC-AUC (recomendación docente) y resulta ser un modelo **sin balanceo**, que aplica el umbral por defecto. Con el criterio anterior (F1 macro), Random Forest + ROS cumplía (0,61). La curva ROC muestra que existe un umbral con recall ≈ 0,60 y una tasa de falsos positivos de ~0,10–0,12. La solución recomendada es **calibrar el umbral de la clase "alto"** en validación cruzada.
+**Umbral de decisión.** El ganador (elegido por ROC-AUC) no usa balanceo. Con la regla por defecto (clase más probable) detecta solo el 41% de los éxitos. Por eso se agregó una regla: **"alto" si P(alto) ≥ u**. El umbral u = 0,28 se eligió con predicciones *fuera de pliegue* de entrenamiento, sin mirar prueba, como el mayor u que logra recall ≥ 0,60. Se aplicó una sola vez a prueba:
+
+| Regla | Recall "alto" | Precisión "alto" | F1 macro | Accuracy | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Por defecto | 0,409 | 0,648 | 0,713 | 0,790 | 0,910 |
+| **u = 0,28** | **0,608** | 0,501 | **0,719** | 0,773 | 0,910 |
+
+El modelo es el mismo; solo cambia dónde se corta. El umbral se guarda en `models/umbral_clase_alto.joblib`.
 
 En la versión sin artista no se cumplían el MAE (11,05), el RMSE (15,77) ni el recall de "alto" (0,51). Esos resultados se conservan en `data/processed/*_sin_artista.csv`.
 
@@ -342,6 +350,56 @@ Coloreada por macro-género, la nube está **mezclada**: no hay "islas" por gén
 |---|---|
 | ![DBSCAN](images/13_dbscan_resultados.png) | ![Comparación](images/13b_comparacion_kmeans_dbscan.png) |
 
+## 7.5 Experimentos de clustering: tres propuestas, K-Means vs. DBSCAN
+
+Sección 4.7 del notebook, **independiente** de los modelos supervisados y de las secciones 4.4–4.6.
+
+**Diseño común (comparación justa):**
+- **Datos:** las 71.740 canciones de entrenamiento, con una fila por ID y **todos** sus géneros (sin elegir un género principal).
+- **Entradas:** solo las 9 variables de audio, con un escalador ajustado en entrenamiento.
+- **Mismas canciones para ambos algoritmos:** no hizo falta muestrear, porque DBSCAN corre con todas.
+- **Búsqueda de parámetros (igual presupuesto para los tres experimentos):**
+  - K-Means: k = 2…15;
+  - DBSCAN: 18 configuraciones (`min_samples` ∈ {10, 18, 30} × 6 valores de `eps` tomados de la curva de k-distancias).
+- **Regla de selección, fijada de antemano y aplicada a ambos algoritmos:**
+  1. filtros: ≥ 2 clusters, ruido ≤ 30%, grupo mayor ≤ 50%;
+  2. candidatas: silueta ≥ 90% de la máxima válida;
+  3. elegida: la de **mayor evidencia del objetivo**.
+- **Separación entre selección y verificación:** la selección usa solo entrenamiento; prueba se usa una vez.
+
+La silueta **no es un porcentaje de precisión**. Se reporta junto con la cobertura y la evidencia externa de cada objetivo.
+
+**Resultado clave:** los tres experimentos usan las mismas entradas, y la regla eligió **la misma configuración** en los tres (K-Means k = 9; DBSCAN eps = 0,69, min_samples = 10). Es **un solo agrupamiento por algoritmo, interpretado de tres formas**.
+
+| Experimento | Evidencia externa | K-Means (k = 9) | DBSCAN (eps = 0,69) | Mejor |
+|---|---|---:|---:|---|
+| **1. Similitudes sonoras entre géneros** | V de Cramér media vs. géneros (multigénero; azar ≈ 0,003) | **0,119** (prueba 0,119) | 0,076 (prueba 0,041) | K-Means |
+| 2. Diversidad sonora de artistas | % de artistas con repertorio concentrado (azar ≈ 5%) | **89,9%** | 6,5% | K-Means |
+| 3. Versiones y reediciones | Lift de versiones con audio distinto en prueba (1 = azar) | **6,1** | 1,8 | K-Means |
+
+**Calidad interna y utilidad:**
+- K-Means tiene silueta 0,18, cobertura 100% y grupo mayor 23%; es estable (ARI 0,93).
+- DBSCAN **no cumple los filtros en ninguna de las 18 configuraciones**: siempre deja un grupo con ≥ 93% de las canciones asignadas. La configuración informada tiene 35% de ruido y silueta −0,23.
+
+**Lectura de cada experimento:**
+- **Exp. 1:** perfiles sonoros asociados a géneros concretos:
+  - new-age, sleep, classical y ambient (lift ~10);
+  - comedy;
+  - techno minimal/detroit;
+  - pagode, samba y sertanejo.
+
+  Relaciones no triviales entre géneros (comparten < 5% de canciones): jazz–tango–romance, grunge–metalcore, ambient–classical–new-age. Son estables (Spearman 0,99).
+- **Exp. 2:** se analizan artistas con ≥ 10 canciones, contando una por clave, para no inflar con reediciones. El resultado es robusto a deduplicar (91,8% sin deduplicar) y estable (0,96), pero solo descriptivo: no se evalúa en prueba.
+- **Exp. 3:** el 83,5% de los pares de versiones tiene audio idéntico y el resto es casi idéntico (distancia 0,40 vs. 3,77 al azar). Por eso es más un **chequeo de coherencia** que una propuesta.
+
+**Recomendación:** presentar el **Experimento 1 con K-Means**. Tiene evidencia externa no trivial, muy superior al azar, replicada en prueba y con conclusiones estables.
+- **Exploratorio:** el valor exacto de k (la silueta es débil, 0,16–0,20, y la evidencia crece con k).
+- **Limitación:** el conjunto de prueba ya se había mirado en las secciones 4.4–4.6.
+
+| | |
+|---|---|
+| ![Exp. 1 perfiles y géneros](images/19_exp1_perfiles_generos_kmeans.png) | ![Exp. 2 artistas](images/21_exp2_ejemplos_artistas.png) |
+
 # 8. Evaluación (conjunto de prueba)
 
 ## 8.1 Regresión
@@ -381,7 +439,7 @@ Las métricas de prueba coinciden con las de CV, así que no hay sobreajuste ni 
 
 | | |
 |---|---|
-| ![Curvas ROC](images/15b_curvas_roc.png) | ![Clasificación test](images/15_clasificacion_test.png) |
+| ![Curvas ROC](images/15b_curvas_roc.png) | ![Umbral clase alto](images/15c_umbral_clase_alto.png) |
 
 ## 8.3 Importancia de variables, sesgo y artistas nuevos
 
@@ -408,7 +466,7 @@ La ganancia del artista se concentra en artistas con historial. Esto genera un r
 
 ## 8.4 Recomendaciones para el negocio
 
-1. **Usar el clasificador para rankear** lanzamientos: revisar primero el top 1–5% por probabilidad de "alto". **Siempre con revisión humana.** Si se necesita etiquetar "alto" con recall ≥ 0,60, **bajar el umbral de decisión** (calibrado en CV) o usar `class_weight`.
+1. **Usar el clasificador para rankear** lanzamientos: revisar primero el top 1–5% por probabilidad de "alto". **Siempre con revisión humana.** Para etiquetar "alto", usar el **umbral calibrado u = 0,28** (recall 0,61, precisión 0,50). El umbral se puede mover según el costo de cada error.
 2. **Para artistas nuevos**, consultar también el modelo sin artista, de modo que no se penalice a quien no tiene historial.
 3. **Usar el regresor** para estimar el nivel general de una canción, no para identificar éxitos puntuales.
 4. **Usar los 10 perfiles K-Means** para playlists por contexto (fiesta, foco, relajación) y las **atípicas de DBSCAN** para revisión de metadatos. No usar el audio para reetiquetar géneros: el acuerdo es bajo.
@@ -425,6 +483,7 @@ La ganancia del artista se concentra en artistas con historial. Esto genera un r
 | `regresor_popularidad.joblib` | HistGradientBoosting (regresión) |
 | `clasificador_popularidad.joblib` | HistGradientBoosting sin balanceo (clasificación) |
 | `kmeans_perfiles_sonoros.joblib` | `StandardScaler` + K-Means (k = 10) |
+| `umbral_clase_alto.joblib` | Umbral calibrado de la clase "alto" (u = 0,28) y su regla de decisión |
 
 Los pipelines usan el transformador propio `src/transformadores.py`. Por eso hay que cargarlos desde la raíz del repositorio, o con `src/` en el `PYTHONPATH`:
 
@@ -463,6 +522,8 @@ machine-learning-spotify/
 │       ├── resultados_balanceo.csv, resultados_cv_clasificacion.csv, resultados_test_clasificacion.csv
 │       ├── ablacion_artista.csv, desempeno_artista_conocido_nuevo.csv
 │       ├── balanceo_por_modelo_explicito.csv              # 19 pruebas de balanceo
+│       ├── umbral_clase_alto.csv
+│       ├── exp1_*.csv, exp2_comparacion.csv, exp3_comparacion.csv, exp_comparacion_final.csv
 │       ├── macrogeneros.csv, kmeans_perfiles.csv
 │       ├── dbscan_sensibilidad_eps.csv, comparacion_kmeans_dbscan.csv
 │       ├── importancia_permutacion.csv, errores_por_genero.csv, kpis_ep2.csv
@@ -486,7 +547,7 @@ pip install -r requirements.txt
 jupyter notebook notebooks/EP2_Spotify_CRISP_DM_Modelado.ipynb
 ```
 
-Ejecutar con **Restart Kernel and Run All**. La ejecución completa toma ~40 minutos en 4 núcleos, sobre todo por la validación cruzada. En Google Colab hay que subir el CSV y la carpeta `src/`, y configurar `RUTA_DATOS` en la sección 2.1.
+Ejecutar con **Restart Kernel and Run All**. La ejecución completa toma ~45–50 minutos en 4 núcleos (validación cruzada y experimentos de clustering) y usa hasta ~4 GB de RAM por DBSCAN. En Google Colab hay que subir el CSV y la carpeta `src/`, y configurar `RUTA_DATOS` en la sección 2.1.
 
 > El notebook EP2 regenera `spotify_multigenero.csv` y `particion_modelo.csv` con la nueva partición por artista + título. Si se vuelve a ejecutar el notebook EP1, esos dos archivos vuelven a su versión anterior.
 
