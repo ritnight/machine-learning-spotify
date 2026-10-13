@@ -22,7 +22,7 @@ El proyecto analiza un conjunto de datos de canciones de Spotify para estudiar s
 |---|---|---|---|
 | Regresión (popularidad 0–100) | HistGradientBoosting | **MAE 9,24 · RMSE 14,21 · R² 0,52** | MAE 17,17 · R² 0,00 |
 | Clasificación (bajo / medio / alto) | HistGradientBoosting **sin balanceo** (elegido por ROC-AUC) + **umbral calibrado u = 0,28** | **ROC-AUC 0,91 · F1 macro 0,72 · Recall "alto" 0,61** · Accuracy 0,77 | AUC 0,50 · F1 macro 0,21 |
-| Clustering: 3 experimentos (géneros, artistas, versiones) | **K-Means (k = 9)** gana a DBSCAN en los tres | Propuesta recomendada: **Exp. 1, similitudes sonoras entre géneros** (asociación con géneros ~40× el azar, replicada en prueba) | — |
+| No supervisado: similitudes sonoras entre géneros | **K-Means (k = 9)** gana a DBSCAN | Asociación con los géneros ~40× el azar (V de Cramér 0,119; igual en prueba); DBSCAN no forma grupos útiles | — |
 
 **Hallazgos principales**
 
@@ -30,7 +30,7 @@ El proyecto analiza un conjunto de datos de canciones de Spotify para estudiar s
 - **El clasificador sirve para priorizar.** Entre el **1% de canciones con mayor probabilidad de "alto", el 93% es realmente popular** (8 veces la tasa base de 11%).
 - **Con ROC-AUC como criterio, "sin balanceo" gana en los 4 clasificadores.** El balanceo cambia el umbral de decisión, no la capacidad de ordenar. Por eso el ganador tiene un AUC excelente, pero recall de "alto" bajo con el umbral por defecto (0,41 < 0,60).
 - **Con el umbral calibrado se cumplen todos los KPIs.** El recall de "alto" pasa de 0,41 a 0,61 sin cambiar el modelo, y el ROC-AUC sigue en 0,91. Para artistas nuevos (28% de la prueba), el MAE es 11,3.
-- **K-Means y DBSCAN** se compararon con el mismo objetivo (recuperar el macro-género desde el audio). **K-Means gana**, pero ninguno recupera bien los géneros. El PCA 3D confirma que el audio es un continuo sin "islas" por género.
+- **No supervisado:** agrupando solo por sonido, K-Means encuentra 9 perfiles asociados a géneros concretos y revela qué géneros suenan parecido (jazz–tango–romance, grunge–metalcore, ambient–clásica). DBSCAN no sirve: el audio es un continuo sin zonas vacías entre estilos.
 
 ---
 
@@ -56,7 +56,7 @@ La popularidad es una variable de **0 a 100** calculada por Spotify. Se aborda d
 1. Asegurar una base de datos limpia, auditable y **sin fuga de información** (EP1, revisada en EP2).
 2. Entrenar y comparar **4 modelos de regresión** contra un baseline.
 3. Entrenar y comparar **4 modelos de clasificación**, evaluando **distintos métodos de balanceo**.
-4. Agrupar las canciones por su sonido con **K-Means y DBSCAN** (mismo objetivo y misma evaluación) y comprobar cuál recupera mejor los **macro-géneros**.
+4. Agrupar las canciones por su sonido con **K-Means y DBSCAN** (mismo objetivo y misma evaluación) para **explorar qué géneros comparten sonido**, y determinar qué algoritmo lo hace mejor.
 5. Cuantificar sesgos del modelo (error por género) y traducir los resultados en recomendaciones.
 
 # 3. KPIs
@@ -75,7 +75,7 @@ Todos los umbrales se fijaron **antes** de evaluar sobre el conjunto de prueba.
 | F1 macro (HistGradientBoosting) | Clasificación | > 0,45 | 0,713 | ✅ |
 | Recall clase "alto", regla por defecto | Clasificación | ≥ 0,60 | 0,409 | ❌ |
 | **Recall clase "alto", umbral calibrado u = 0,28** | Clasificación | ≥ 0,60 | **0,608** | ✅ |
-| Silueta K-Means (k = 10, prueba) | No supervisado | ≥ 0,15 | 0,164 | ✅ |
+| Silueta K-Means (k = 9, prueba) | No supervisado | ≥ 0,15 | 0,180 | ✅ |
 
 **Umbral de decisión.** El ganador (elegido por ROC-AUC) no usa balanceo. Con la regla por defecto (clase más probable) detecta solo el 41% de los éxitos. Por eso se agregó una regla: **"alto" si P(alto) ≥ u**. El umbral u = 0,28 se eligió con predicciones *fuera de pliegue* de entrenamiento, sin mirar prueba, como el mayor u que logra recall ≥ 0,60. Se aplicó una sola vez a prueba:
 
@@ -137,7 +137,7 @@ En la versión sin artista no se cumplían el MAE (11,05), el RMSE (15,77) ni el
 | **Incluir el artista** en el pipeline, por su influencia en la popularidad | *Target encoding* suavizado con *cross-fitting*; en colaboraciones se usa el máximo entre artistas. Se compara siempre con el modelo sin artista. |
 | **K-Means y DBSCAN** como modelos no supervisados (requisito de la asignatura) | DBSCAN reemplaza al clustering jerárquico de la versión anterior. |
 | **Árbol de decisión en lugar de Ridge** (v3): los 4 regresores son no lineales | `DecisionTreeRegressor`. |
-| **Mismo objetivo para K-Means y DBSCAN** (v3) | Ambos agrupan por audio y se evalúan contra 10 **macro-géneros**, con las mismas métricas y PCA 3D. |
+| **Mismo objetivo para K-Means y DBSCAN** | Ambos agrupan las mismas canciones por audio y se evalúan contra **todos** los géneros de cada canción, sin forzar un género principal ni macro-géneros. |
 | **ROC-AUC como métrica principal** de clasificación (v3, recomendación docente) | Selección del balanceo, de los hiperparámetros y del ganador por AUC; curvas ROC. |
 
 Las **reglas de limpieza de la EP1 se mantienen**: 158 filas eliminadas (99,86% conservado), 20 álbumes imputados y la moda de compás. Su justificación está en el notebook (sección 3.1).
@@ -279,126 +279,64 @@ Desempate y métricas complementarias: F1 macro y recall de "alto".
 
 > **🏆 Modelo ganador: HistGradientBoosting + sin balanceo** (ROC-AUC CV 0,909).
 
-## 7.3 No supervisado — objetivo común de K-Means y DBSCAN
+## 7.3 No supervisado — similitudes sonoras entre géneros (K-Means vs. DBSCAN)
 
-**Objetivo común:** agrupar las canciones usando **solo cómo suenan** y comprobar si esos grupos recuperan las **familias musicales (macro-géneros)**. Las condiciones son las mismas para los dos algoritmos:
-- **Variables:** las 9 de audio, estandarizadas.
-- **Muestra:** las mismas 20.000 canciones de entrenamiento, más 5.000 de prueba para comprobar la generalización.
-- **Métricas:** NMI, ARI, homogeneidad, completitud, pureza, silueta y Davies-Bouldin.
-- **Criterio del ganador:** mayor NMI frente al macro-género.
+Sección 4.4 del notebook, independiente de los modelos supervisados.
 
-**Referencia — 10 macro-géneros** (asignación manual de los 114 géneros; `data/processed/macrogeneros.csv`): Rock/Alternativo, Metal/Extremo, Electrónica/Dance, Pop, Hip-hop/R&B/Soul, Latino/Caribe, Brasileña, Folk/Country/Acústico, Clásica/Ambiental/Jazz e Infantil/Mundo/Otros.
+**Objetivo:** identificar grupos de canciones con audio similar que permitan explorar relaciones entre géneros. Los modelos agrupan usando **solo las 9 variables de audio**. El género, la popularidad y el artista **no se usan** para entrenar: el género se mira después, para interpretar.
 
-### K-Means: cómo agrupa
+**Cómo agrupa cada algoritmo:**
 
-K-Means minimiza la distancia de cada canción al **centroide** de su grupo:
-1. Elige k centroides iniciales (`k-means++`).
-2. Asigna cada canción al centroide más cercano.
-3. Recalcula cada centroide como el promedio de su grupo.
-4. Repite los pasos 2 y 3 hasta que no hay cambios.
+| | K-Means | DBSCAN |
+|---|---|---|
+| Idea | Divide las canciones en **k grupos** alrededor de centros (canción "promedio") | Agrupa por **densidad**: zonas con muchas canciones cercanas |
+| Cómo | 1) elige k centros; 2) asigna cada canción al centro más cercano; 3) recalcula los centros; 4) repite hasta que no hay cambios | Una canción es "núcleo" si tiene ≥ `min_samples` vecinas a distancia < `eps`; los núcleos cercanos forman un cluster y las canciones aisladas quedan como **ruido** |
+| Parámetros | k | `eps`, `min_samples` |
 
-Se ejecuta 10 veces y se queda con la mejor solución. Toda canción queda en un grupo. **k = 10**, igual al número de macro-géneros (el codo y la silueta se muestran como referencia).
-
-| Cluster | Perfil sonoro | Macro-género dominante | % "alto" |
-|---|---|---|---:|
-| 0 | Acústicas melancólicas | Infantil/Mundo (24%), Folk (19%) | 10,2% |
-| 1 | Intensas y oscuras | Electrónica (23%), Metal (18%), Rock (17%) | **15,7%** |
-| 2 | Ambientales / clásicas | **Clásica/Ambiental (58%)** | 6,8% |
-| 3 | Rápidas e intensas | Electrónica (22%), Rock (21%) | 11,9% |
-| 4 | Rítmicas con voz hablada | Electrónica (29%), Mundo (24%) | 12,1% |
-| 5 | En vivo | **Brasileña (29%)** | 6,2% |
-| 6 | Bailables y alegres | Electrónica (26%), Latino (17%) | 14,8% |
-| 7 | Electrónica instrumental | **Electrónica (58%)** | 3,4% |
-| 8 | Acústicas alegres | Folk (17%), Mundo (17%), Pop (15%) | 10,1% |
-| 9 | Habladas (comedia) | **Infantil/Mundo/Otros (94%)** | 0,5% |
-
-![K-Means vs macro-género](images/10_kmeans_perfiles_vs_macrogenero.png)
-
-**PCA 3D:** las 3 primeras componentes explican el **62%** de la varianza:
-- **PC1 = intensidad** (energía y volumen frente a acusticidad);
-- **PC2 = baile y ánimo** (bailabilidad y positividad);
-- **PC3 = voz hablada / en vivo**.
-
-Coloreada por macro-género, la nube está **mezclada**: no hay "islas" por género, salvo la zona del contenido hablado y la cola de la música clásica/ambiental. K-Means corta esa nube continua en regiones.
-
-![PCA 3D](images/11_pca_3d_kmeans_macrogenero.png)
-
-## 7.4 DBSCAN y comparación con K-Means
-
-**DBSCAN agrupa por densidad.** Una canción con al menos `min_samples` = 18 vecinas a menos de `eps` es un "núcleo". Los núcleos cercanos forman un cluster, y las canciones aisladas quedan como **ruido**. `eps` = 1,56 se toma del codo de la curva de k-distancias.
-
-**Resultado:** 2 clusters (catálogo principal 97% y nicho de comedia 0,7%) + 2,3% de canciones atípicas.
-- Ningún `eps` probado (0,6–2,0) supera un NMI de 0,06.
-- Con `eps` bajo, entre el 47% y el 88% de las canciones queda como ruido.
-
-| Métrica (misma muestra) | K-Means (k = 10) | DBSCAN (eps = 1,56) |
-|---|---:|---:|
-| **NMI vs. macro-género** (criterio) | **0,132** | 0,019 |
-| ARI vs. macro-género | **0,064** | 0,000 |
-| Homogeneidad | **0,131** | 0,010 |
-| Completitud | 0,133 | 0,148 |
-| Pureza | **0,303** | 0,225 |
-| NMI en prueba | **0,135** | 0,023 |
-| Silueta | 0,170 | 0,571* |
-| Grupos / % ruido | 10 / 0% | 2 / 2,3% |
-
-\*La silueta de DBSCAN engaña: el 99% de las canciones cae en un solo grupo.
-
-> **🏆 Ganador: K-Means.** Recupera ~7 veces más información del macro-género que DBSCAN. Ninguno recupera bien los géneros, porque el audio es un continuo y gran parte de la identidad de género es cultural. DBSCAN queda como herramienta complementaria para detectar canciones atípicas.
-
-| | |
-|---|---|
-| ![DBSCAN](images/13_dbscan_resultados.png) | ![Comparación](images/13b_comparacion_kmeans_dbscan.png) |
-
-## 7.5 Experimentos de clustering: tres propuestas, K-Means vs. DBSCAN
-
-Sección 4.7 del notebook, **independiente** de los modelos supervisados y de las secciones 4.4–4.6.
-
-**Diseño común (comparación justa):**
-- **Datos:** las 71.740 canciones de entrenamiento, con una fila por ID y **todos** sus géneros (sin elegir un género principal).
-- **Entradas:** solo las 9 variables de audio, con un escalador ajustado en entrenamiento.
-- **Mismas canciones para ambos algoritmos:** no hizo falta muestrear, porque DBSCAN corre con todas.
-- **Búsqueda de parámetros (igual presupuesto para los tres experimentos):**
+**Comparación justa:**
+- **Mismos datos:** las 71.740 canciones de entrenamiento (una fila por ID, con **todos** sus géneros) y las mismas 9 variables, escaladas solo con entrenamiento. No hizo falta muestrear.
+- **Misma búsqueda de parámetros:**
   - K-Means: k = 2…15;
-  - DBSCAN: 18 configuraciones (`min_samples` ∈ {10, 18, 30} × 6 valores de `eps` tomados de la curva de k-distancias).
-- **Regla de selección, fijada de antemano y aplicada a ambos algoritmos:**
+  - DBSCAN: 18 configuraciones (`min_samples` ∈ {10, 18, 30} × 6 valores de `eps` de la curva de k-distancias).
+- **Misma regla de selección, fijada de antemano:**
   1. filtros: ≥ 2 clusters, ruido ≤ 30%, grupo mayor ≤ 50%;
-  2. candidatas: silueta ≥ 90% de la máxima válida;
-  3. elegida: la de **mayor evidencia del objetivo**.
+  2. candidatas: silueta ≥ 90% de la máxima;
+  3. elegida: la de mayor asociación con los géneros.
 - **Separación entre selección y verificación:** la selección usa solo entrenamiento; prueba se usa una vez.
 
-La silueta **no es un porcentaje de precisión**. Se reporta junto con la cobertura y la evidencia externa de cada objetivo.
+**Cómo se mide la asociación con los géneros sin forzar un género principal:** cada género se trata como una variable propia (sí/no) y se calcula su asociación con los grupos mediante la **V de Cramér corregida por sesgo**. Va de 0 (no hay relación) a 1 (el género define un grupo). Luego se promedia sobre los 114 géneros. Como referencia de azar, se repite el cálculo con los grupos permutados.
 
-**Resultado clave:** los tres experimentos usan las mismas entradas, y la regla eligió **la misma configuración** en los tres (K-Means k = 9; DBSCAN eps = 0,69, min_samples = 10). Es **un solo agrupamiento por algoritmo, interpretado de tres formas**.
+**Resultados (la silueta no es un porcentaje de acierto):**
 
-| Experimento | Evidencia externa | K-Means (k = 9) | DBSCAN (eps = 0,69) | Mejor |
-|---|---|---:|---:|---|
-| **1. Similitudes sonoras entre géneros** | V de Cramér media vs. géneros (multigénero; azar ≈ 0,003) | **0,119** (prueba 0,119) | 0,076 (prueba 0,041) | K-Means |
-| 2. Diversidad sonora de artistas | % de artistas con repertorio concentrado (azar ≈ 5%) | **89,9%** | 6,5% | K-Means |
-| 3. Versiones y reediciones | Lift de versiones con audio distinto en prueba (1 = azar) | **6,1** | 1,8 | K-Means |
+| Métrica | K-Means (k = 9) | DBSCAN (eps = 0,69, min_samples = 10) |
+|---|---:|---:|
+| ¿Cumple los filtros? | ✅ | ❌ (ninguna de las 18 configuraciones) |
+| Cobertura / ruido | 100% / 0% | 65% / 35% |
+| Grupo mayor (% de asignadas) | 23% | 93% |
+| Silueta (muestra de 10.000 asignadas) | 0,18 (prueba 0,18) | −0,23 |
+| **V de Cramér con géneros** (azar ≈ 0,003) | **0,119** (prueba 0,119) | 0,076 (prueba 0,041) |
+| Estabilidad en submuestras (ARI) | 0,93 | 0,96* |
+| Estabilidad de las relaciones entre géneros | 0,99 | 0,94 |
 
-**Calidad interna y utilidad:**
-- K-Means tiene silueta 0,18, cobertura 100% y grupo mayor 23%; es estable (ARI 0,93).
-- DBSCAN **no cumple los filtros en ninguna de las 18 configuraciones**: siempre deja un grupo con ≥ 93% de las canciones asignadas. La configuración informada tiene 35% de ruido y silueta −0,23.
+\*La estabilidad de DBSCAN es alta solo porque su grupo gigante se repite.
 
-**Lectura de cada experimento:**
-- **Exp. 1:** perfiles sonoros asociados a géneros concretos:
-  - new-age, sleep, classical y ambient (lift ~10);
-  - comedy;
-  - techno minimal/detroit;
-  - pagode, samba y sertanejo.
-
-  Relaciones no triviales entre géneros (comparten < 5% de canciones): jazz–tango–romance, grunge–metalcore, ambient–classical–new-age. Son estables (Spearman 0,99).
-- **Exp. 2:** se analizan artistas con ≥ 10 canciones, contando una por clave, para no inflar con reediciones. El resultado es robusto a deduplicar (91,8% sin deduplicar) y estable (0,96), pero solo descriptivo: no se evalúa en prueba.
-- **Exp. 3:** el 83,5% de los pares de versiones tiene audio idéntico y el resto es casi idéntico (distancia 0,40 vs. 3,77 al azar). Por eso es más un **chequeo de coherencia** que una propuesta.
-
-**Recomendación:** presentar el **Experimento 1 con K-Means**. Tiene evidencia externa no trivial, muy superior al azar, replicada en prueba y con conclusiones estables.
-- **Exploratorio:** el valor exacto de k (la silueta es débil, 0,16–0,20, y la evidencia crece con k).
-- **Limitación:** el conjunto de prueba ya se había mirado en las secciones 4.4–4.6.
+**Lectura:**
+- **K-Means gana claramente.** Sus 9 perfiles son coherentes y se asocian a géneros concretos:
+  - "−volumen / +instrumental" → new-age, sleep, classical, ambient;
+  - "habla + en vivo" → comedy;
+  - "+instrumental / −acústica" → techno minimal y detroit;
+  - "en vivo / energía" → pagode, samba, sertanejo;
+  - "positivo y bailable" → salsa, reggaetón, disco;
+  - "−acústica / −positividad" → metal, metalcore.
+- **Relaciones entre géneros no triviales** (comparten < 5% de canciones), estables al repetir el análisis: jazz–tango–romance–honky-tonk, grunge–metalcore, ambient–clásica–new-age, techno minimal–detroit–trip-hop.
+- **DBSCAN no es adecuado:** el audio es un continuo sin zonas vacías entre estilos, así que siempre junta ≥ 93% de las canciones en un solo grupo, incluso dejando un tercio como ruido.
+- **¿Es viable?** **Sí, como herramienta exploratoria y de curaduría**: playlists por contexto y recomendación de géneros afines. **No sirve como clasificador de géneros**, porque la mayoría de los géneros se solapan en el audio (silueta 0,18).
+- **Exploratorio:** el número de grupos (la evidencia crece con k, y 9 es una elección práctica de la regla).
+- **Limitación:** el conjunto de prueba ya se había mirado en versiones anteriores con estas mismas variables.
 
 | | |
 |---|---|
-| ![Exp. 1 perfiles y géneros](images/19_exp1_perfiles_generos_kmeans.png) | ![Exp. 2 artistas](images/21_exp2_ejemplos_artistas.png) |
+| ![Perfiles y géneros](images/19_exp1_perfiles_generos_kmeans.png) | ![Selección y tamaños](images/18_exp1_seleccion_tamanos.png) |
 
 # 8. Evaluación (conjunto de prueba)
 
@@ -469,7 +407,7 @@ La ganancia del artista se concentra en artistas con historial. Esto genera un r
 1. **Usar el clasificador para rankear** lanzamientos: revisar primero el top 1–5% por probabilidad de "alto". **Siempre con revisión humana.** Para etiquetar "alto", usar el **umbral calibrado u = 0,28** (recall 0,61, precisión 0,50). El umbral se puede mover según el costo de cada error.
 2. **Para artistas nuevos**, consultar también el modelo sin artista, de modo que no se penalice a quien no tiene historial.
 3. **Usar el regresor** para estimar el nivel general de una canción, no para identificar éxitos puntuales.
-4. **Usar los 10 perfiles K-Means** para playlists por contexto (fiesta, foco, relajación) y las **atípicas de DBSCAN** para revisión de metadatos. No usar el audio para reetiquetar géneros: el acuerdo es bajo.
+4. **Usar los 9 perfiles K-Means** para playlists por contexto (fiesta, foco, relajación) y para recomendar géneros afines. No usar el audio para reetiquetar géneros: la mayoría se solapan.
 5. **Para mejorar los modelos:**
    - incorporar la fecha de lanzamiento y la exposición en playlists;
    - deduplicar las reediciones en la fuente.
@@ -482,7 +420,7 @@ La ganancia del artista se concentra en artistas con historial. Esto genera un r
 |---|---|
 | `regresor_popularidad.joblib` | HistGradientBoosting (regresión) |
 | `clasificador_popularidad.joblib` | HistGradientBoosting sin balanceo (clasificación) |
-| `kmeans_perfiles_sonoros.joblib` | `StandardScaler` + K-Means (k = 10) |
+| `kmeans_perfiles_sonoros.joblib` | `StandardScaler` + K-Means (k = 9, sección 4.4) |
 | `umbral_clase_alto.joblib` | Umbral calibrado de la clase "alto" (u = 0,28) y su regla de decisión |
 
 Los pipelines usan el transformador propio `src/transformadores.py`. Por eso hay que cargarlos desde la raíz del repositorio, o con `src/` en el `PYTHONPATH`:
@@ -523,9 +461,7 @@ machine-learning-spotify/
 │       ├── ablacion_artista.csv, desempeno_artista_conocido_nuevo.csv
 │       ├── balanceo_por_modelo_explicito.csv              # 19 pruebas de balanceo
 │       ├── umbral_clase_alto.csv
-│       ├── exp1_*.csv, exp2_comparacion.csv, exp3_comparacion.csv, exp_comparacion_final.csv
-│       ├── macrogeneros.csv, kmeans_perfiles.csv
-│       ├── dbscan_sensibilidad_eps.csv, comparacion_kmeans_dbscan.csv
+│       ├── exp1_*.csv                                     # clustering K-Means vs. DBSCAN
 │       ├── importancia_permutacion.csv, errores_por_genero.csv, kpis_ep2.csv
 │       └── *_sin_artista.csv                              # resultados de la versión sin artista
 ├── images/          # 00–05 EDA (EP1) · 06–17 modelamiento y evaluación (EP2)
@@ -547,7 +483,7 @@ pip install -r requirements.txt
 jupyter notebook notebooks/EP2_Spotify_CRISP_DM_Modelado.ipynb
 ```
 
-Ejecutar con **Restart Kernel and Run All**. La ejecución completa toma ~45–50 minutos en 4 núcleos (validación cruzada y experimentos de clustering) y usa hasta ~4 GB de RAM por DBSCAN. En Google Colab hay que subir el CSV y la carpeta `src/`, y configurar `RUTA_DATOS` en la sección 2.1.
+Ejecutar con **Restart Kernel and Run All**. La ejecución completa toma ~40 minutos en 4 núcleos (validación cruzada y clustering) y usa hasta ~4 GB de RAM por DBSCAN. En Google Colab hay que subir el CSV y la carpeta `src/`, y configurar `RUTA_DATOS` en la sección 2.1.
 
 > El notebook EP2 regenera `spotify_multigenero.csv` y `particion_modelo.csv` con la nueva partición por artista + título. Si se vuelve a ejecutar el notebook EP1, esos dos archivos vuelven a su versión anterior.
 

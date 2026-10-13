@@ -10,4 +10,4 @@ F1 macro (HistGradientBoosting),Clasificación,"> 0,45",0.713,✅ Sí
 ROC-AUC macro (HistGradientBoosting),Clasificación,"≥ 0,80",0.91,✅ Sí
 "Recall ""alto"" con umbral calibrado u=0.28 (HistGradientBoosting)",Clasificación,"≥ 0,60",0.608,✅ Sí
 F1 macro con umbral calibrado (HistGradientBoosting),Clasificación,"> 0,45",0.719,✅ Sí
-"Silueta K-Means (k=10, prueba)",No supervisado,"≥ 0,15",0.164,✅ Sí
+"Silueta K-Means (k=9, prueba)",No supervisado,"≥ 0,15",0.18,✅ Sí
