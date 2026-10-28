@@ -12,6 +12,7 @@ El proyecto analiza un conjunto de datos de canciones de Spotify para estudiar s
 | **Metodología** | CRISP-DM |
 | **Entrega actual** | Evaluación Parcial N.º 2 (modelamiento y evaluación) |
 | **Notebook principal** | [`notebooks/EP2_Spotify_CRISP_DM_Modelado.ipynb`](notebooks/EP2_Spotify_CRISP_DM_Modelado.ipynb) |
+| **Optimización (preparación EP3)** | [`notebooks/EP3_Optimizacion_Modelos.ipynb`](notebooks/EP3_Optimizacion_Modelos.ipynb) |
 | **Notebook EP1 (histórico)** | [`notebooks/EP1_Spotify_CRISP_DM_COMPLETO.ipynb`](notebooks/EP1_Spotify_CRISP_DM_COMPLETO.ipynb) |
 
 ---
@@ -30,6 +31,7 @@ El proyecto analiza un conjunto de datos de canciones de Spotify para estudiar s
 - **El clasificador sirve para priorizar.** Entre el **1% de canciones con mayor probabilidad de "alto", el 93% es realmente popular** (8 veces la tasa base de 11%).
 - **Con ROC-AUC como criterio, "sin balanceo" gana en los 4 clasificadores.** El balanceo cambia el umbral de decisión, no la capacidad de ordenar. Por eso el ganador tiene un AUC excelente, pero recall de "alto" bajo con el umbral por defecto (0,41 < 0,60).
 - **Con el umbral calibrado se cumplen todos los KPIs.** El recall de "alto" pasa de 0,41 a 0,61 sin cambiar el modelo, y el ROC-AUC sigue en 0,91. Para artistas nuevos (28% de la prueba), el MAE es 11,3.
+- **Optimización (preparación EP3):** se probaron GridSearchCV, RandomizedSearchCV y validación cruzada con KFold, StratifiedKFold, GroupKFold y LeaveOneOut, y estrategias de Bagging y Boosting. La regresión mantiene el modelo de la EP2. En clasificación, RandomizedSearchCV + GroupKFold mejora levemente el modelo: AUC de prueba 0,911 y F1 macro 0,725 con umbral (sección 8.5).
 - **No supervisado:** agrupando solo por sonido, K-Means encuentra 9 perfiles asociados a géneros concretos y revela qué géneros suenan parecido (jazz–tango–romance, grunge–metalcore, ambient–clásica). DBSCAN no sirve: el audio es un continuo sin zonas vacías entre estilos.
 
 ---
@@ -412,6 +414,31 @@ La ganancia del artista se concentra en artistas con historial. Esto genera un r
    - incorporar la fecha de lanzamiento y la exposición en playlists;
    - deduplicar las reediciones en la fuente.
 
+## 8.5 Optimización del aprendizaje (preparación EP3)
+
+Notebook: [`notebooks/EP3_Optimizacion_Modelos.ipynb`](notebooks/EP3_Optimizacion_Modelos.ipynb). Usa los dos modelos ganadores de la EP2 (HistGradientBoosting de regresión y de clasificación) y prueba:
+
+- **Métodos de ajuste:** `cross_validate` con hiperparámetros fijos, `GridSearchCV` y `RandomizedSearchCV`, con el mismo presupuesto (8 configuraciones × 3 pliegues).
+- **Esquemas de validación cruzada:** KFold estándar, StratifiedKFold (clases o deciles de popularidad), GroupKFold, StratifiedGroupKFold y LeaveOneOut. LeaveOneOut se aplica a una submuestra de 500 canciones, porque con todo el dataset tomaría ~6,6 días por configuración.
+- **Estrategias de ensamble:** Boosting (el modelo actual) y Bagging (`Bagging*` sobre el mismo modelo).
+
+**Comparación justa.** Las estimaciones de distintos esquemas no son comparables entre sí. Por eso cada combinación se mide en una **validación común**: el 20% del entrenamiento, agrupado por artista + título y no usado en ninguna búsqueda. La ganadora se evalúa una sola vez en prueba.
+
+| Hallazgo | Resultado |
+|---|---|
+| Fuga de KFold y StratifiedKFold | 12% de las canciones de validación tiene una reedición en el entrenamiento del pliegue. Por eso subestiman el error: MAE estimado de 9,15 frente a 9,40 real. |
+| Estratificar | No cambia la estimación con 57 mil canciones. |
+| LeaveOneOut (500 canciones) | No estima mejor que KFold de 10 pliegues y cuesta 70 veces más. |
+| Bagging vs. Boosting | Bagging empeora o iguala en ambas tareas: MAE de validación 9,54 frente a 9,40; AUC 0,907 frente a 0,908. Además cuesta entre 4 y 6 veces más. |
+| Grid vs. Random | En regresión, la grilla confirma los hiperparámetros de la EP2. En clasificación gana la búsqueda aleatoria, que explora más hiperparámetros. |
+
+**Elección:**
+
+- **Regresión:** se mantiene la configuración de la EP2 (MAE de prueba 9,24).
+- **Clasificación:** Boosting + `RandomizedSearchCV` + `GroupKFold`, con `learning_rate` 0,0224, `max_leaf_nodes` 102, `min_samples_leaf` 39 y `l2_regularization` 0,976. Su AUC de prueba es **0,911** (EP2: 0,910). Con umbral 0,28, el recall de "alto" es 0,614 (EP2: 0,608), la precisión 0,513 (EP2: 0,501) y el F1 macro 0,725 (EP2: 0,719).
+
+La mejora es pequeña, del orden de la variación entre pliegues, pero va en la misma dirección en validación y en prueba. Las tablas completas, con los hiperparámetros elegidos en cada combinación, están en el notebook y en `data/processed/ep3_comparacion_combinaciones.csv`.
+
 # 9. Despliegue (propuesta)
 
 `models/` contiene pipelines completos (preprocesamiento + modelo) serializados con `joblib`:
@@ -422,6 +449,8 @@ La ganancia del artista se concentra en artistas con historial. Esto genera un r
 | `clasificador_popularidad.joblib` | HistGradientBoosting sin balanceo (clasificación) |
 | `kmeans_perfiles_sonoros.joblib` | `StandardScaler` + K-Means (k = 9, sección 4.4) |
 | `umbral_clase_alto.joblib` | Umbral calibrado de la clase "alto" (u = 0,28) y su regla de decisión |
+| `clasificador_popularidad_ep3.joblib` | Clasificador optimizado en el notebook EP3 (RandomizedSearchCV + GroupKFold) |
+| `umbral_clase_alto_ep3.joblib` | Umbral de la clase "alto" recalculado para el clasificador EP3 (u = 0,28) |
 
 Los pipelines usan el transformador propio `src/transformadores.py`. Por eso hay que cargarlos desde la raíz del repositorio, o con `src/` en el `PYTHONPATH`:
 
@@ -463,12 +492,15 @@ machine-learning-spotify/
 │       ├── umbral_clase_alto.csv
 │       ├── exp1_*.csv                                     # clustering K-Means vs. DBSCAN
 │       ├── importancia_permutacion.csv, errores_por_genero.csv, kpis_ep2.csv
-│       └── *_sin_artista.csv                              # resultados de la versión sin artista
-├── images/          # 00–05 EDA (EP1) · 06–17 modelamiento y evaluación (EP2)
+│       ├── *_sin_artista.csv                              # resultados de la versión sin artista
+│       ├── ep3_*.csv                                      # optimización EP3 (esquemas, LOO, combinaciones, prueba)
+│       └── ep3_cache/                                     # resultados guardados de cada experimento EP3
+├── images/          # 00–05 EDA (EP1) · 06–19 modelamiento y evaluación (EP2) · 30–32 optimización (EP3)
 ├── models/          # pipelines serializados (joblib)
 ├── notebooks/
 │   ├── EP1_Spotify_CRISP_DM_COMPLETO.ipynb    # entrega EP1 (histórico)
-│   └── EP2_Spotify_CRISP_DM_Modelado.ipynb    # notebook completo y ejecutable (Fases 1–6)
+│   ├── EP2_Spotify_CRISP_DM_Modelado.ipynb    # notebook completo y ejecutable (Fases 1–6)
+│   └── EP3_Optimizacion_Modelos.ipynb         # búsqueda de hiperparámetros, esquemas de CV y ensambles
 ├── src/transformadores.py   # CodificadorArtista (target encoding del artista)
 ├── requirements.txt
 └── README.md
@@ -484,6 +516,8 @@ jupyter notebook notebooks/EP2_Spotify_CRISP_DM_Modelado.ipynb
 ```
 
 Ejecutar con **Restart Kernel and Run All**. La ejecución completa toma ~40 minutos en 4 núcleos (validación cruzada y clustering) y usa hasta ~4 GB de RAM por DBSCAN. En Google Colab hay que subir el CSV y la carpeta `src/`, y configurar `RUTA_DATOS` en la sección 2.1.
+
+El notebook EP3 se ejecuta después del EP2, porque usa sus archivos `spotify_multigenero.csv` y `particion_modelo.csv` y sus modelos de `models/`. Su primera ejecución tarda ~2,5 horas. Los resultados de cada experimento quedan en `data/processed/ep3_cache/` y una nueva ejecución los reutiliza (~5 minutos).
 
 > El notebook EP2 regenera `spotify_multigenero.csv` y `particion_modelo.csv` con la nueva partición por artista + título. Si se vuelve a ejecutar el notebook EP1, esos dos archivos vuelven a su versión anterior.
 
