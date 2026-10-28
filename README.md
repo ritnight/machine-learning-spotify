@@ -13,6 +13,7 @@ El proyecto analiza un conjunto de datos de canciones de Spotify para estudiar s
 | **Entrega actual** | Evaluación Parcial N.º 2 (modelamiento y evaluación) |
 | **Notebook principal** | [`notebooks/EP2_Spotify_CRISP_DM_Modelado.ipynb`](notebooks/EP2_Spotify_CRISP_DM_Modelado.ipynb) |
 | **Optimización (preparación EP3)** | [`notebooks/EP3_Optimizacion_Modelos.ipynb`](notebooks/EP3_Optimizacion_Modelos.ipynb) |
+| **Guía del notebook EP3 (PDF)** | [`docs/EP3_Optimizacion_Modelos_Explicacion.pdf`](docs/EP3_Optimizacion_Modelos_Explicacion.pdf) |
 | **Notebook EP1 (histórico)** | [`notebooks/EP1_Spotify_CRISP_DM_COMPLETO.ipynb`](notebooks/EP1_Spotify_CRISP_DM_COMPLETO.ipynb) |
 
 ---
@@ -31,7 +32,7 @@ El proyecto analiza un conjunto de datos de canciones de Spotify para estudiar s
 - **El clasificador sirve para priorizar.** Entre el **1% de canciones con mayor probabilidad de "alto", el 93% es realmente popular** (8 veces la tasa base de 11%).
 - **Con ROC-AUC como criterio, "sin balanceo" gana en los 4 clasificadores.** El balanceo cambia el umbral de decisión, no la capacidad de ordenar. Por eso el ganador tiene un AUC excelente, pero recall de "alto" bajo con el umbral por defecto (0,41 < 0,60).
 - **Con el umbral calibrado se cumplen todos los KPIs.** El recall de "alto" pasa de 0,41 a 0,61 sin cambiar el modelo, y el ROC-AUC sigue en 0,91. Para artistas nuevos (28% de la prueba), el MAE es 11,3.
-- **Optimización (preparación EP3):** se probaron GridSearchCV, RandomizedSearchCV y validación cruzada con KFold, StratifiedKFold, GroupKFold y LeaveOneOut, y estrategias de Bagging y Boosting. La regresión mantiene el modelo de la EP2. En clasificación, RandomizedSearchCV + GroupKFold mejora levemente el modelo: AUC de prueba 0,911 y F1 macro 0,725 con umbral (sección 8.5).
+- **Optimización (preparación EP3):** se probaron GridSearchCV, RandomizedSearchCV y validación cruzada con KFold, StratifiedKFold, GroupKFold y LeaveOneOut, y estrategias de Bagging y Boosting. La regresión mantiene el modelo de la EP2. En clasificación, RandomizedSearchCV + GroupKFold mejora levemente el modelo: AUC de prueba 0,911 y F1 macro 0,724 con umbral (sección 8.5).
 - **No supervisado:** agrupando solo por sonido, K-Means encuentra 9 perfiles asociados a géneros concretos y revela qué géneros suenan parecido (jazz–tango–romance, grunge–metalcore, ambient–clásica). DBSCAN no sirve: el audio es un continuo sin zonas vacías entre estilos.
 
 ---
@@ -435,9 +436,9 @@ Notebook: [`notebooks/EP3_Optimizacion_Modelos.ipynb`](notebooks/EP3_Optimizacio
 **Elección:**
 
 - **Regresión:** se mantiene la configuración de la EP2 (MAE de prueba 9,24).
-- **Clasificación:** Boosting + `RandomizedSearchCV` + `GroupKFold`, con `learning_rate` 0,0224, `max_leaf_nodes` 102, `min_samples_leaf` 39 y `l2_regularization` 0,976. Su AUC de prueba es **0,911** (EP2: 0,910). Con umbral 0,28, el recall de "alto" es 0,614 (EP2: 0,608), la precisión 0,513 (EP2: 0,501) y el F1 macro 0,725 (EP2: 0,719).
+- **Clasificación:** Boosting + `RandomizedSearchCV` + `GroupKFold`, con `learning_rate` 0,0224, `max_leaf_nodes` 102, `min_samples_leaf` 39 y `l2_regularization` 0,976. Su AUC de prueba es **0,911** (EP2: 0,910). Con umbral 0,28, el recall de "alto" es 0,614 (EP2: 0,608), la precisión 0,513 (EP2: 0,501) y el F1 macro 0,724 (EP2: 0,719).
 
-La mejora es pequeña, del orden de la variación entre pliegues, pero va en la misma dirección en validación y en prueba. Las tablas completas, con los hiperparámetros elegidos en cada combinación, están en el notebook y en `data/processed/ep3_comparacion_combinaciones.csv`.
+La mejora es pequeña, del orden de la variación entre pliegues, pero va en la misma dirección en validación y en prueba. La guía [`docs/EP3_Optimizacion_Modelos_Explicacion.pdf`](docs/EP3_Optimizacion_Modelos_Explicacion.pdf) explica en detalle cada prueba, hiperparámetro y decisión. Las tablas completas, con los hiperparámetros elegidos en cada combinación, están en el notebook y en `data/processed/ep3_comparacion_combinaciones.csv`.
 
 # 9. Despliegue (propuesta)
 
@@ -495,6 +496,7 @@ machine-learning-spotify/
 │       ├── *_sin_artista.csv                              # resultados de la versión sin artista
 │       ├── ep3_*.csv                                      # optimización EP3 (esquemas, LOO, combinaciones, prueba)
 │       └── ep3_cache/                                     # resultados guardados de cada experimento EP3
+├── docs/EP3_Optimizacion_Modelos_Explicacion.pdf   # guía detallada del notebook EP3
 ├── images/          # 00–05 EDA (EP1) · 06–19 modelamiento y evaluación (EP2) · 30–32 optimización (EP3)
 ├── models/          # pipelines serializados (joblib)
 ├── notebooks/
