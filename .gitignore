@@ -1,2 +1,5 @@
 __pycache__/
 .ipynb_checkpoints/
+
+# Caché EP3: el modelo final reentrenado es pesado y se regenera en minutos
+data/processed/ep3_cache/F_*
